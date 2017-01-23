@@ -4,12 +4,14 @@ defineSuite([
         'Core/BoundingSphere',
         'Core/Cartesian3',
         'Core/Cartesian4',
+        'Scene/CullingVolume',
         'Core/Ellipsoid',
         'Core/Intersect',
         'Core/Math',
         'Core/Matrix3',
         'Core/Occluder',
         'Core/Plane',
+        'Scene/PerspectiveFrustum',
         'Core/Quaternion',
         'Core/Rectangle'
     ], function(
@@ -17,12 +19,14 @@ defineSuite([
         BoundingSphere,
         Cartesian3,
         Cartesian4,
+        CullingVolume,
         Ellipsoid,
         Intersect,
         CesiumMath,
         Matrix3,
         Occluder,
         Plane,
+        PerspectiveFrustum,
         Quaternion,
         Rectangle) {
     'use strict';
@@ -515,6 +519,49 @@ defineSuite([
         var box = new OrientedBoundingBox(Cartesian3.IDENTITY, Matrix3.ZERO);
         expect(function() {
             OrientedBoundingBox.intersectPlane(box, undefined);
+        }).toThrowDeveloperError();
+    });
+
+    it ('intersectBoundingVolume', function() {
+        var frustum = new PerspectiveFrustum();
+        frustum.near = 2.0;
+        frustum.far = 10.0;
+        frustum.aspectRatio = 1.0;
+        frustum.fov = CesiumMath.toRadians(60.0);
+        var position = new Cartesian3(0.0, 0.0, 0.0);
+        var direction = new Cartesian3(0.0, 0.0, -1.0);
+        var up = new Cartesian3(0.0, 1.0, 0.0);
+        var volume = frustum.computeCullingVolume(position, direction, up);
+
+        var box, center;
+
+        var corner = volume.points[7];
+        center = new Cartesian3();
+
+        Cartesian3.add(corner, new Cartesian3(5.1, 5.1, -5.1), center);
+        box = new OrientedBoundingBox(center, Matrix3.multiplyByScalar(Matrix3.IDENTITY, 5.0, new Matrix3()));
+        expect(box.intersectBoundingVolume(volume)).toEqual(Intersect.OUTSIDE);
+
+        Cartesian3.add(corner, new Cartesian3(4.9, 4.9, -4.9), center);
+        box = new OrientedBoundingBox(center, Matrix3.multiplyByScalar(Matrix3.IDENTITY, 5.0, new Matrix3()));
+        expect(box.intersectBoundingVolume(volume)).toEqual(Intersect.INTERSECTING);
+
+        center = Cartesian3.fromElements(0, 0, -6, center);
+        box = new OrientedBoundingBox(center, Matrix3.multiplyByScalar(Matrix3.IDENTITY, 5.8, new Matrix3()));
+        expect(box.intersectBoundingVolume(volume)).toEqual(Intersect.INSIDE);
+    });
+
+    it ('intersectBoundingVolume fails without box parameter', function() {
+        var volume = new CullingVolume();
+        expect(function() {
+            OrientedBoundingBox.intersectBoundingVolume(undefined, volume);
+        }).toThrowDeveloperError();
+    });
+
+    it ('intersectBoundingVolume fails without boundingVolume parameter', function() {
+        var box = new OrientedBoundingBox(Cartesian3.IDENTITY, Matrix3.ZERO);
+        expect(function() {
+            OrientedBoundingBox.intersectBoundingVolume(box, undefined);
         }).toThrowDeveloperError();
     });
 

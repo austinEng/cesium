@@ -4,15 +4,21 @@ defineSuite([
         'Core/AxisAlignedBoundingBox',
         'Core/BoundingSphere',
         'Core/Cartesian3',
+        'Core/Matrix3',
+        'Core/Math',
         'Core/Intersect',
-        'Scene/PerspectiveFrustum'
+        'Scene/PerspectiveFrustum',
+        'Core/OrientedBoundingBox'
     ], function(
         CullingVolume,
         AxisAlignedBoundingBox,
         BoundingSphere,
         Cartesian3,
+        Matrix3,
+        CesiumMath,
         Intersect,
-        PerspectiveFrustum) {
+        PerspectiveFrustum,
+        OrientedBoundingBox) {
     'use strict';
 
     var cullingVolume;
@@ -270,6 +276,73 @@ defineSuite([
                 var sphere13 = BoundingSphere.fromPoints([new Cartesian3(-0.5, -4.5, -1.25), new Cartesian3(-0.5, -5, -1.25)]);
                 testWithAndWithoutPlaneMask(cullingVolume, sphere13, Intersect.OUTSIDE);
             });
+        });
+    });
+
+    describe('large OOBBs', function() {
+
+        it ('culls left bottom near', function() {
+            var center = Cartesian3.add(cullingVolume.points[0], new Cartesian3(-1, -1, 1), new Cartesian3());
+            var rot = Matrix3.fromRotationY(CesiumMath.toRadians(-45));
+            var scale = Matrix3.fromScale(new Cartesian3(100, 100, 0.01));
+            var box = new OrientedBoundingBox(center, Matrix3.multiply(rot, scale, scale));
+            expect(cullingVolume.computeVisibility(box)).toEqual(Intersect.OUTSIDE);
+        });
+
+        it ('culls right bottom near', function() {
+            var center = Cartesian3.add(cullingVolume.points[1], new Cartesian3(1, -1, 1), new Cartesian3());
+            var rot = Matrix3.fromRotationY(CesiumMath.toRadians(45));
+            var scale = Matrix3.fromScale(new Cartesian3(100, 100, 0.01));
+            var box = new OrientedBoundingBox(center, Matrix3.multiply(rot, scale, scale));
+            expect(cullingVolume.computeVisibility(box)).toEqual(Intersect.OUTSIDE);
+        });
+
+        it ('culls left top near', function() {
+            var center = Cartesian3.add(cullingVolume.points[2], new Cartesian3(-1, 1, 1), new Cartesian3());
+            var rot = Matrix3.fromRotationY(CesiumMath.toRadians(-45));
+            var scale = Matrix3.fromScale(new Cartesian3(100, 100, 0.01));
+            var box = new OrientedBoundingBox(center, Matrix3.multiply(rot, scale, scale));
+            expect(cullingVolume.computeVisibility(box)).toEqual(Intersect.OUTSIDE);
+        });
+
+        it ('culls right top near', function() {
+            var center = Cartesian3.add(cullingVolume.points[3], new Cartesian3(1, 1, 1), new Cartesian3());
+            var rot = Matrix3.fromRotationY(CesiumMath.toRadians(45));
+            var scale = Matrix3.fromScale(new Cartesian3(100, 100, 0.01));
+            var box = new OrientedBoundingBox(center, Matrix3.multiply(rot, scale, scale));
+            expect(cullingVolume.computeVisibility(box)).toEqual(Intersect.OUTSIDE);
+        });
+
+        it ('culls left bottom far', function() {
+            var center = Cartesian3.add(cullingVolume.points[4], new Cartesian3(-1, -1, -1), new Cartesian3());
+            var rot = Matrix3.fromRotationY(CesiumMath.toRadians(45));
+            var scale = Matrix3.fromScale(new Cartesian3(100, 100, 0.01));
+            var box = new OrientedBoundingBox(center, Matrix3.multiply(rot, scale, scale));
+            expect(cullingVolume.computeVisibility(box)).toEqual(Intersect.OUTSIDE);
+        });
+
+        it ('culls right bottom far', function() {
+            var center = Cartesian3.add(cullingVolume.points[5], new Cartesian3(1, -1, -1), new Cartesian3());
+            var rot = Matrix3.fromRotationY(CesiumMath.toRadians(-45));
+            var scale = Matrix3.fromScale(new Cartesian3(100, 100, 0.01));
+            var box = new OrientedBoundingBox(center, Matrix3.multiply(rot, scale, scale));
+            expect(cullingVolume.computeVisibility(box)).toEqual(Intersect.OUTSIDE);
+        });
+
+        it ('culls left top far', function() {
+            var center = Cartesian3.add(cullingVolume.points[6], new Cartesian3(-1, 1, -1), new Cartesian3());
+            var rot = Matrix3.fromRotationY(CesiumMath.toRadians(45));
+            var scale = Matrix3.fromScale(new Cartesian3(100, 100, 0.01));
+            var box = new OrientedBoundingBox(center, Matrix3.multiply(rot, scale, scale));
+            expect(cullingVolume.computeVisibility(box)).toEqual(Intersect.OUTSIDE);
+        });
+
+        it ('culls right top far', function() {
+            var center = Cartesian3.add(cullingVolume.points[7], new Cartesian3(1, 1, -1), new Cartesian3());
+            var rot = Matrix3.fromRotationY(CesiumMath.toRadians(-45));
+            var scale = Matrix3.fromScale(new Cartesian3(100, 100, 0.01));
+            var box = new OrientedBoundingBox(center, Matrix3.multiply(rot, scale, scale));
+            expect(cullingVolume.computeVisibility(box)).toEqual(Intersect.OUTSIDE);
         });
     });
 

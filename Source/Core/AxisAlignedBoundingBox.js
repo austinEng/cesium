@@ -196,6 +196,105 @@ define([
         return Intersect.INTERSECTING;
     };
 
+    var scratchCartesians = [
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3()
+    ];
+
+    /**
+     * Determines if this box intersects a culling volume
+     *
+     * @param {OrientedBoundingBox} box The axis aligned bounding box to test
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume, and
+     *                      {@link Intersect.INTERSECTING} if the box intersects the volume
+     */
+    AxisAlignedBoundingBox.intersectCullingVolume = function(box, volume) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(box)) {
+            throw new DeveloperError('box is required.');
+        }
+        if (!defined(volume)) {
+            throw new DeveloperError('volume is required.');
+        }
+        //>>includeEnd('debug');
+
+        var points = volume.points;
+        var length = points.length;
+
+        var diffs = scratchCartesians;
+
+        for (j = 0; j < length; ++j) {
+            Cartesian3.subtract(points[j], box.center, diffs[j]);
+        }
+
+        var inside = true;
+        var j, proj, axisLength;
+
+        var out1 = 0;
+        var out2 = 0;
+        for (j = 0; j < length; ++j) {
+            proj = diffs[j].x;
+            axisLength = (box.maximum.x - box.minimum.x) / 2;
+            if (proj >= axisLength) {
+                out1++;
+                inside = false;
+            } else if (proj < -axisLength) {
+                out2++;
+                inside = false;
+            }
+        }
+
+        if (out1 === length || out2 === length) {
+            return Intersect.OUTSIDE;
+        }
+
+        out1 = 0;
+        out2 = 0;
+        for (j = 0; j < length; ++j) {
+            proj = diffs[j].y;
+            axisLength = (box.maximum.y - box.minimum.y) / 2;
+            if (proj >= axisLength) {
+                out1++;
+                inside = false;
+            } else if (proj < -axisLength) {
+                out2++;
+                inside = false;
+            }
+        }
+
+        if (out1 === length || out2 === length) {
+            return Intersect.OUTSIDE;
+        }
+
+        out1 = 0;
+        out2 = 0;
+        for (j = 0; j < length; ++j) {
+            proj = diffs[j].z;
+            axisLength = (box.maximum.z - box.minimum.z) / 2;
+            if (proj >= axisLength) {
+                out1++;
+                inside = false;
+            } else if (proj < -axisLength) {
+                out2++;
+                inside = false;
+            }
+        }
+
+        if (out1 === length || out2 === length) {
+            return Intersect.OUTSIDE;
+        }
+
+        return inside ? Intersect.INSIDE : Intersect.INTERSECTING;
+    };
+
     /**
      * Duplicates this AxisAlignedBoundingBox instance.
      *
@@ -217,6 +316,18 @@ define([
      */
     AxisAlignedBoundingBox.prototype.intersectPlane = function(plane) {
         return AxisAlignedBoundingBox.intersectPlane(this, plane);
+    };
+
+    /**
+     * Determines if this box intersects a culling volume
+     *
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume, and
+     *                      {@link Intersect.INTERSECTING} if the box intersects the volume
+     */
+    AxisAlignedBoundingBox.prototype.intersectCullingVolume = function(volume) {
+        return AxisAlignedBoundingBox.intersectCullingVolume(this, volume);
     };
 
     /**

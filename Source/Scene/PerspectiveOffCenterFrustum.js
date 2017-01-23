@@ -165,6 +165,7 @@ define([
     var getPlanesNearCenter = new Cartesian3();
     var getPlanesFarCenter = new Cartesian3();
     var getPlanesNormal = new Cartesian3();
+
     /**
      * Creates a culling volume for this frustum.
      *
@@ -299,6 +300,66 @@ define([
         plane.y = normal.y;
         plane.z = normal.z;
         plane.w = -Cartesian3.dot(normal, farCenter);
+
+        var points = this._cullingVolume.points;
+        var result;
+        var center = nearCenter;
+
+        var ratio = f / n;
+
+        Cartesian3.multiplyByScalar(direction, n, center);
+        Cartesian3.add(position, center, center);
+
+        result = points[0] = new Cartesian3();
+        Cartesian3.multiplyByScalar(right, l, normal);
+        Cartesian3.add(normal, center, result);
+        Cartesian3.multiplyByScalar(up, b, normal);
+        Cartesian3.add(normal, result, result);
+
+        result = points[1] = new Cartesian3();
+        Cartesian3.multiplyByScalar(right, r, normal);
+        Cartesian3.add(normal, center, result);
+        Cartesian3.multiplyByScalar(up, ratio*b, normal);
+        Cartesian3.add(normal, result, result);
+
+        result = points[2] = new Cartesian3();
+        Cartesian3.multiplyByScalar(right, l, normal);
+        Cartesian3.add(normal, center, result);
+        Cartesian3.multiplyByScalar(up, t, normal);
+        Cartesian3.add(normal, result, result);
+
+        result = points[3] = new Cartesian3();
+        Cartesian3.multiplyByScalar(right, r, normal);
+        Cartesian3.add(normal, center, result);
+        Cartesian3.multiplyByScalar(up, t, normal);
+        Cartesian3.add(normal, result, result);
+
+        Cartesian3.multiplyByScalar(direction, f, center);
+        Cartesian3.add(position, center, center);
+
+        result = points[4] = new Cartesian3();
+        Cartesian3.multiplyByScalar(right, ratio*l, normal);
+        Cartesian3.add(normal, center, result);
+        Cartesian3.multiplyByScalar(up, ratio*b, normal);
+        Cartesian3.add(normal, result, result);
+
+        result = points[5] = new Cartesian3();
+        Cartesian3.multiplyByScalar(right, ratio*r, normal);
+        Cartesian3.add(normal, center, result);
+        Cartesian3.multiplyByScalar(up, ratio*b, normal);
+        Cartesian3.add(normal, result, result);
+
+        result = points[6] = new Cartesian3();
+        Cartesian3.multiplyByScalar(right, ratio*l, normal);
+        Cartesian3.add(normal, center, result);
+        Cartesian3.multiplyByScalar(up, ratio*t, normal);
+        Cartesian3.add(normal, result, result);
+
+        result = points[7] = new Cartesian3();
+        Cartesian3.multiplyByScalar(right, ratio*r, normal);
+        Cartesian3.add(normal, center, result);
+        Cartesian3.multiplyByScalar(up, ratio*t, normal);
+        Cartesian3.add(normal, result, result);
 
         return this._cullingVolume;
     };

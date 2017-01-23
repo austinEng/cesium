@@ -293,6 +293,23 @@ define([
     };
 
     /**
+     * Determines if this box intersects a culling volume
+     *
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume, and
+     *                      {@link Intersect.INTERSECTING} if the box intersects the volume
+     */
+    TileBoundingRegion.prototype.intersectCullingVolume = function(volume) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(volume)) {
+            throw new DeveloperError('volume is required.');
+        }
+        //>>includeEnd('debug');
+        return this._orientedBoundingBox.intersectCullingVolume(volume);
+    };
+
+    /**
      * Creates a debug primitive that shows the outline of the tile bounding region.
      *
      * @param {Color} color The desired color of the primitive's mesh

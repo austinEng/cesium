@@ -11,6 +11,7 @@ define([
         './Interval',
         './Matrix3',
         './Matrix4',
+        './Plane',
         './Rectangle'
     ], function(
         Cartesian3,
@@ -24,6 +25,7 @@ define([
         Interval,
         Matrix3,
         Matrix4,
+        Plane,
         Rectangle) {
     'use strict';
 
@@ -960,6 +962,57 @@ define([
         return Intersect.INSIDE;
     };
 
+    var scratchPlane = new Plane(new Cartesian3(), 0.0);
+
+    /**
+     * Determines if this sphere intersects a culling volume
+     *
+     * @param {BoundingSphere} sphere The sphere to test
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire sphere is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire sphere is outside the volume, and
+     *                      {@link Intersect.INTERSECTING} if the sphere intersects the volume
+     */
+    BoundingSphere.intersectCullingVolume = function(sphere, volume) {
+        //>>includeStart('debug', pragmas.debug);
+        Check.typeOf.object(sphere, 'sphere');
+        Check.typeOf.object(volume, 'volume');
+        //>>includeEnd('debug');
+
+        var points = volume.points;
+        var planes = volume.planes;
+        var npoints = points.length;
+        var nplanes = planes.length;
+        var radius = sphere.radius;
+
+        var inside = true;
+        // loop through culling volume planes as splitting planes
+        for (var i = 0; i < nplanes; ++i) {
+            var plane = planes[i];
+            var sphereProj = Cartesian3.dot(plane, sphere.center) + plane.w;
+
+            // project all points of the volume onto the normal of the splitting plane
+            var min = Number.POSITIVE_INFINITY;
+            var max = Number.NEGATIVE_INFINITY;
+            for (var j = 0; j < npoints; ++j) {
+                var point = points[j];
+                var pointToPlane = Cartesian3.dot(plane, point) + plane.w;
+                min = pointToPlane < min ? pointToPlane : min;
+                max = pointToPlane > max ? pointToPlane : max;
+            }
+
+            if (max <= sphereProj - radius || min >= sphereProj + radius) {
+                return Intersect.OUTSIDE;
+            }
+
+            if (min <= sphereProj - radius || max >= sphereProj + radius) {
+                inside = false;
+            }
+        }
+
+        return inside ? Intersect.INSIDE : Intersect.INTERSECTING;
+    };
+
     /**
      * Applies a 4x4 affine transformation matrix to a bounding sphere.
      *
@@ -1225,6 +1278,18 @@ define([
      */
     BoundingSphere.prototype.intersectPlane = function(plane) {
         return BoundingSphere.intersectPlane(this, plane);
+    };
+
+    /**
+     * Determines if this sphere intersects a culling volume
+     *
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume, and
+     *                      {@link Intersect.INTERSECTING} if the box intersects the volume
+     */
+    BoundingSphere.prototype.intersectCullingVolume = function(volume) {
+        return BoundingSphere.intersectCullingVolume(this, volume);
     };
 
     /**

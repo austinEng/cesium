@@ -4,6 +4,7 @@ define([
         './Cartesian2',
         './Cartesian3',
         './Cartographic',
+        './Check',
         './defaultValue',
         './defined',
         './DeveloperError',
@@ -20,6 +21,7 @@ define([
         Cartesian2,
         Cartesian3,
         Cartographic,
+        Check,
         defaultValue,
         defined,
         DeveloperError,
@@ -406,6 +408,68 @@ define([
         return Intersect.INTERSECTING;
     };
 
+    var scratchCartesians = [
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3()
+    ];
+
+    /**
+     * Determines if this box intersects a culling volume
+     *
+     * @param {OrientedBoundingBox} box The oriented bounding box to test
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume, and
+     *                      {@link Intersect.INTERSECTING} if the box intersects the volume
+     */
+    OrientedBoundingBox.intersectCullingVolume = function(box, volume) {
+        //>>includeStart('debug', pragmas.debug);
+        Check.typeOf.object(box, 'box');
+        Check.typeOf.object(volume, 'volume');
+        //>>includeEnd('debug');
+
+        var points = volume.points;
+        var length = points.length;
+
+        var diffs = scratchCartesians;
+
+        for (j = 0; j < length; ++j) {
+            Cartesian3.subtract(points[j], box.center, diffs[j]);
+        }
+
+        var inside = true;
+        for (var i = 0; i < 3; ++i) {
+            // Compute the distance in the direction of the ith half axis from the origin to slabs of the box
+            var axis = Cartesian3.fromElements(box.halfAxes[3*i], box.halfAxes[3*i+1], box.halfAxes[3*i+2], scratchCartesian1);
+            // Compare against squared length to avoid normalizing
+            var axisLengthSquared = Cartesian3.magnitudeSquared(axis);
+
+            var out1 = 0;
+            var out2 = 0;
+            for (var j = 0; j < length; ++j) {
+                var proj = Cartesian3.dot(diffs[j], axis);
+                if (proj >= axisLengthSquared) {
+                    out1++;
+                    inside = false;
+                } else if (proj < -axisLengthSquared) {
+                    out2++;
+                    inside = false;
+                }
+            }
+
+            if (out1 === length || out2 === length) {
+                return Intersect.OUTSIDE;
+            }
+        }
+        return inside ? Intersect.INSIDE : Intersect.INTERSECTING;
+    };
+
     var scratchCartesianU = new Cartesian3();
     var scratchCartesianV = new Cartesian3();
     var scratchCartesianW = new Cartesian3();
@@ -658,6 +722,18 @@ define([
      */
     OrientedBoundingBox.prototype.intersectPlane = function(plane) {
         return OrientedBoundingBox.intersectPlane(this, plane);
+    };
+
+    /**
+     * Determines if this box intersects a culling volume
+     *
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume, and
+     *                      {@link Intersect.INTERSECTING} if the box intersects the volume
+     */
+     OrientedBoundingBox.prototype.intersectCullingVolume = function(volume) {
+        return OrientedBoundingBox.intersectCullingVolume(this, volume);
     };
 
     /**
