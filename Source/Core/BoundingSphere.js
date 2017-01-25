@@ -1,6 +1,7 @@
 /*global define*/
 define([
         './Cartesian3',
+        './Cartesian4',
         './Cartographic',
         './Check',
         './defaultValue',
@@ -11,9 +12,11 @@ define([
         './Interval',
         './Matrix3',
         './Matrix4',
+        './Plane',
         './Rectangle'
     ], function(
         Cartesian3,
+        Cartesian4,
         Cartographic,
         Check,
         defaultValue,
@@ -24,6 +27,7 @@ define([
         Interval,
         Matrix3,
         Matrix4,
+        Plane,
         Rectangle) {
     'use strict';
 
@@ -960,6 +964,27 @@ define([
         return Intersect.INSIDE;
     };
 
+    var scratchPlane = new Plane(Cartesian3.ZERO, 0);
+    BoundingSphere.intersectCullingVolume = function(sphere, volume) {
+        //>>includeStart('debug', pragmas.debug);
+        Check.typeOf.object(sphere, 'sphere');
+        Check.typeOf.object(volume, 'volume');
+        //>>includeEnd('debug');
+
+        var intersecting = false;
+        var planes = volume.planes;
+        for (var k = 0, len = planes.length; k < len; ++k) {
+            var result = sphere.intersectPlane(Plane.fromCartesian4(planes[k], scratchPlane));
+            if (result === Intersect.OUTSIDE) {
+                return Intersect.OUTSIDE;
+            } else if (result === Intersect.INTERSECTING) {
+                intersecting = true;
+            }
+        }
+
+        return intersecting ? Intersect.INTERSECTING : Intersect.INSIDE;
+    };
+
     /**
      * Applies a 4x4 affine transformation matrix to a bounding sphere.
      *
@@ -1225,6 +1250,10 @@ define([
      */
     BoundingSphere.prototype.intersectPlane = function(plane) {
         return BoundingSphere.intersectPlane(this, plane);
+    };
+
+    BoundingSphere.prototype.intersectCullingVolume = function(boundingVolume) {
+        return BoundingSphere.intersectCullingVolume(this, boundingVolume);
     };
 
     /**

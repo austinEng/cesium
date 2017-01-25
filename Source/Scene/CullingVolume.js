@@ -34,6 +34,7 @@ define([
          * @default []
          */
         this.planes = defaultValue(planes, []);
+        this.points = [];
     }
 
     var faces = [new Cartesian3(), new Cartesian3(), new Cartesian3()];
@@ -121,18 +122,7 @@ define([
         }
         //>>includeEnd('debug');
 
-        var planes = this.planes;
-        var intersecting = false;
-        for (var k = 0, len = planes.length; k < len; ++k) {
-            var result = boundingVolume.intersectPlane(Plane.fromCartesian4(planes[k], scratchPlane));
-            if (result === Intersect.OUTSIDE) {
-                return Intersect.OUTSIDE;
-            } else if (result === Intersect.INTERSECTING) {
-                intersecting = true;
-            }
-        }
-
-        return intersecting ? Intersect.INTERSECTING : Intersect.INSIDE;
+        return boundingVolume.intersectCullingVolume(this);
     };
 
     /**

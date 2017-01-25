@@ -3,7 +3,9 @@ define([
         './BoundingSphere',
         './Cartesian2',
         './Cartesian3',
+        './Cartesian4',
         './Cartographic',
+        './Check',
         './defaultValue',
         './defined',
         './DeveloperError',
@@ -19,7 +21,9 @@ define([
         BoundingSphere,
         Cartesian2,
         Cartesian3,
+        Cartesian4,
         Cartographic,
+        Check,
         defaultValue,
         defined,
         DeveloperError,
@@ -406,6 +410,84 @@ define([
         return Intersect.INTERSECTING;
     };
 
+    var scratchDiffs = [
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3()
+    ];
+    var scratchPlane = new Plane(Cartesian3.ZERO, 0);
+
+    /**
+     * Determines if an oriented bounding box overlaps a culling volume
+     *
+     * @param {OrientedBoundingBox} box The oriented bounding box to test.
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
+    OrientedBoundingBox.intersectCullingVolume = function(box, volume) {
+        //>>includeStart('debug', pragmas.debug);
+        Check.typeOf.object(box, 'box');
+        Check.typeOf.object(volume, 'volume');
+        //>>includeEnd('debug');
+
+        // first check if the box is outside any planes of the culling volume
+        var intersecting = false;
+        var planes = volume.planes;
+        for (var k = 0, len = planes.length; k < len; ++k) {
+            var result = box.intersectPlane(Plane.fromCartesian4(planes[k], scratchPlane));
+            if (result === Intersect.OUTSIDE) {
+                return Intersect.OUTSIDE;
+            } else if (result === Intersect.INTERSECTING) {
+                intersecting = true;
+            }
+        }
+
+        // in case of false positive, check if the frustum is outside any planes of the box
+        if (intersecting) {
+            var points = volume.points;
+            var length = points.length;
+            var diffs = scratchDiffs;
+            // vectors from volume corners to the box
+            for (var j = 0; j < length; ++j) {
+                Cartesian3.subtract(points[j], box.center, diffs[j]);
+            }
+
+            intersecting = false;
+            for (var i = 0; i < 3; ++i) {
+                // Compute the distance in the direction of the ith half axis from the origin to slabs of the box
+                var axis = scratchCartesian1;
+                axis.x = box.halfAxes[3*i]; axis.y = box.halfAxes[3*i+1]; axis.z = box.halfAxes[3*i+2];
+                var axisLengthSquared = Cartesian3.magnitudeSquared(axis);
+
+                var out1 = 0;
+                var out2 = 0;
+                // for each slab of the box, check if all points are on one side
+                for (j = 0; j < length; ++j) {
+                    var proj = Cartesian3.dot(diffs[j], axis);
+                    if (proj >= axisLengthSquared) {
+                        out1++;
+                    } else if (proj < -axisLengthSquared) {
+                        out2++;
+                    }
+                }
+
+                if (out1 === 8 || out2 === 8) {
+                    return Intersect.OUTSIDE;
+                }
+
+                intersecting |= (out1 !== 0 || out2 !== 0);
+            }
+            return intersecting ? Intersect.INTERSECTING : Intersect.INSIDE;
+        }
+    };
+
     var scratchCartesianU = new Cartesian3();
     var scratchCartesianV = new Cartesian3();
     var scratchCartesianW = new Cartesian3();
@@ -658,6 +740,18 @@ define([
      */
     OrientedBoundingBox.prototype.intersectPlane = function(plane) {
         return OrientedBoundingBox.intersectPlane(this, plane);
+    };
+
+    /**
+     * Determines if this box overlaps a culling volume
+     *
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
+    OrientedBoundingBox.prototype.intersectCullingVolume = function(volume) {
+        return OrientedBoundingBox.intersectCullingVolume(this, volume);
     };
 
     /**
