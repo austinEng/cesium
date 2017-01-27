@@ -985,6 +985,158 @@ define([
         return intersecting ? Intersect.INTERSECTING : Intersect.INSIDE;
     };
 
+    var scratchSphere = new BoundingSphere();
+    var scratch1 = new Cartesian3();
+    var scratch2 = new Cartesian3();
+    var scratch3 = new Cartesian3();
+    var scratchN = new Cartesian3();
+    var diffs = [
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3()
+    ];
+
+    BoundingSphere.intersectRectangleShadow = function(sphere, center, right, up, normal) {
+        var sphereRadius = sphere.radius;
+        var sphereCenter = sphere.center;
+        var toPlane = Cartesian3.subtract(sphereCenter, center, scratch1);
+        var distanceNormal = Cartesian3.dot(normal, toPlane);
+
+        if (distanceNormal < -sphereRadius) {
+            return Intersect.OUTSIDE;
+        }
+
+        var rightLength = Cartesian3.magnitude(right);
+        var distanceRight = Math.abs(Cartesian3.dot(right, toPlane));
+        if (distanceRight > (rightLength + sphereRadius) * rightLength) {
+            return Intersect.OUTSIDE;
+        }
+
+        var upLength = Cartesian3.magnitude(up);
+        var distanceUp = Math.abs(Cartesian3.dot(up, toPlane));
+        if (distanceUp > (upLength + sphereRadius) * upLength) {
+            return Intersect.OUTSIDE;
+        }
+
+        if (distanceNormal < sphereRadius) {
+            return Intersect.INTERSECTING;
+        }
+
+        if (distanceRight <= (rightLength - sphereRadius) * rightLength && distanceUp <= (upLength - sphereRadius) * upLength) {
+            return Intersect.INSIDE;
+        }
+
+        return Intersect.INTERSECTING;
+
+
+        // if (dx < -(rightLen + sphereRadius) || dx >= rightLen + sphereRadius) {
+        //     return Intersect.OUTSIDE;
+        // }
+    };
+
+    BoundingSphere.intersectFrustumPlane = function(sphere, points) {
+        var e1 = Cartesian3.subtract(points[1], points[0], scratch1);
+        var e2 = Cartesian3.subtract(points[2], points[1], scratch2);
+        var normal = Cartesian3.cross(e1, e2, scratchN);
+        Cartesian3.normalize(normal, normal);
+
+        var center = sphere.center;
+        var radius = sphere.radius;
+        var toPlane = Cartesian3.subtract(points[0], center, scratch1);
+        var distance = Cartesian3.dot(normal, toPlane);
+
+        if (distance >= radius) {
+            return Intersect.OUTSIDE;
+        } else {
+            var circleCenter  = Cartesian3.add(center, Cartesian3.multiplyByScalar(normal, distance, scratch2), scratch3);
+            var circleRadiusSquared = Math.pow(radius, 2) - Math.pow(distance, 2);
+
+            for (var i = 0; i < length; ++i) {
+
+            }
+        }/*else if (distance >= 0) {
+            var length = points.length;
+            var i;
+            for (i = 0; i < length; ++i) {
+                Cartesian3.subtract(points[i], center, diffs[i]);
+            }
+
+            for (i = 0; i < length; ++i) {
+                var axis = Cartesian3.normalize(diffs[i], scratch1);
+
+                var min = Number.POSITIVE_INFINITY;
+                var max = Number.NEGATIVE_INFINITY;
+                for (var j = 0; j < length; ++j) {
+                    var proj = Cartesian3.dot(axis, diffs[j]);
+                    if (proj < min) {
+                        min = proj;
+                    }
+                    if (proj > max) {
+                        max = proj;
+                    }
+                }
+
+                if (max < -radius || min >= radius) {
+                    return Intersect.OUTSIDE;
+                }
+            }
+            return Intersect.INTERSECTING;
+        } else {
+            return Intersect.INSIDE;
+        }*/
+
+            /*var perp = Cartesian3.multiplyByScalar(normal, distance, scratch3);
+            var sign;
+            var outside = false;
+            for (var i = 0, length = points.length; i < length - 1; ++i) {
+                e1 = Cartesian3.subtract(points[i+1], points[i], scratch1);
+                e2 = Cartesian3.subtract(points[i+1], center, scratch2);
+                Cartesian3.subtract(e2, perp, e2);
+                var dot = Cartesian3.dot(normal, Cartesian3.cross(e1, e2, scratch1));
+
+                if (i === 0) {
+                    sign = dot;
+                    continue;
+                }
+                if (dot * sign < 0) {
+                    outside = true;
+                    break;
+                }
+            }
+
+            if (distance >= -radius) {
+
+            } else {
+                if (!outside) {
+
+                }
+            }
+        }*/
+
+
+        var boundingSphere = BoundingSphere.fromPoints(points, scratchSphere);
+        var d = Cartesian3.distanceSquared(boundingSphere.center, sphere.center);
+        var r1Squared = Math.pow(sphere.radius, 2);
+        var r2Squared = Math.pow(boundingSphere.radius, 2);
+
+        if (r1Squared + r2Squared >= d) {
+            return Intersect.OUTSIDE;
+        }
+
+        var temp;
+        if (r2Squared < r1Squared) {
+            temp = r2Squared;
+            r2Squared = r1Squared;
+            r1Squared = temp;
+        }
+        if (d + r1Squared < r2Squared) {
+            return Intersect.INSIDE;
+        }
+
+        return Intersect.INTERSECTING;
+    };
+
     /**
      * Applies a 4x4 affine transformation matrix to a bounding sphere.
      *
@@ -1254,6 +1406,14 @@ define([
 
     BoundingSphere.prototype.intersectCullingVolume = function(boundingVolume) {
         return BoundingSphere.intersectCullingVolume(this, boundingVolume);
+    };
+
+    BoundingSphere.prototype.intersectConvexPolygon = function(points) {
+        return BoundingSphere.intersectConvexPolygon(this, points);
+    };
+
+    BoundingSphere.prototype.intersectRectangleShadow = function(center, right, up, normal) {
+        return BoundingSphere.intersectRectangleShadow(this, center, right, up, normal);
     };
 
     /**

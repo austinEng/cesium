@@ -479,6 +479,7 @@ define([
                 }
 
                 if (out1 === 8 || out2 === 8) {
+                    // console.log('culled oob');
                     return Intersect.OUTSIDE;
                 }
 
@@ -486,6 +487,76 @@ define([
             }
             return intersecting ? Intersect.INTERSECTING : Intersect.INSIDE;
         }
+    };
+
+    var scratchPoints = [
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3()
+    ];
+    OrientedBoundingBox.intersectRectangleShadow = function(box, center, right, up, normal) {
+        var result;
+        result = scratchPoints[0];
+        Cartesian3.subtract(center, right, result);
+        Cartesian3.subtract(result, up, result);
+
+        result = scratchPoints[1];
+        Cartesian3.add(center, right, result);
+        Cartesian3.subtract(result, up, result);
+
+        result = scratchPoints[2];
+        Cartesian3.add(center, right, result);
+        Cartesian3.add(result, up, result);
+
+        result = scratchPoints[3];
+        Cartesian3.subtract(center, right, result);
+        Cartesian3.add(result, up, result);
+
+        return OrientedBoundingBox.intersectConvexPolygonShadow(box, scratchPoints, normal);
+    };
+
+    var scratchPlane2 = new Plane(Cartesian3.ZERO, 0.0);
+    OrientedBoundingBox.intersectConvexPolygonShadow = function(box, points, normal) {
+        var planeIntersection = box.intersectPlane(Plane.fromPointNormal(points[0], normal, scratchPlane2));
+        if (planeIntersection === Intersect.OUTSIDE) {
+            return planeIntersection;
+        }
+
+        var intersecting = false;
+        var length = points.length;
+
+        var diffs = scratchDiffs;
+        // vectors from volume corners to the box
+        for (var j = 0; j < length; ++j) {
+            Cartesian3.subtract(points[j], box.center, diffs[j]);
+        }
+
+        for (var i = 0; i < 3; ++i) {
+            // Compute the distance in the direction of the ith half axis from the origin to slabs of the box
+            var axis = scratchCartesian1;
+            axis.x = box.halfAxes[3*i]; axis.y = box.halfAxes[3*i+1]; axis.z = box.halfAxes[3*i+2];
+            var axisLengthSquared = Cartesian3.magnitudeSquared(axis);
+
+            var out1 = 0;
+            var out2 = 0;
+            // for each slab of the box, check if all points are on one side
+            for (j = 0; j < length; ++j) {
+                var proj = Cartesian3.dot(diffs[j], axis);
+                if (proj >= axisLengthSquared) {
+                    out1++;
+                } else if (proj < -axisLengthSquared) {
+                    out2++;
+                }
+            }
+
+            if (out1 === length || out2 === length) {
+                return Intersect.OUTSIDE;
+            }
+
+            intersecting |= (out1 !== 0 || out2 !== 0);
+        }
+        return intersecting ? Intersect.INTERSECTING : planeIntersection;
     };
 
     var scratchCartesianU = new Cartesian3();
@@ -752,6 +823,14 @@ define([
      */
     OrientedBoundingBox.prototype.intersectCullingVolume = function(volume) {
         return OrientedBoundingBox.intersectCullingVolume(this, volume);
+    };
+
+    OrientedBoundingBox.prototype.intersectConvexPolygonShadow = function(points, normal) {
+        return OrientedBoundingBox.intersectConvexPolygonShadow(this, points, normal);
+    };
+
+    OrientedBoundingBox.prototype.intersectRectangleShadow = function(center, right, up, normal) {
+        return OrientedBoundingBox.intersectRectangleShadow(this, center, right, up, normal);
     };
 
     /**

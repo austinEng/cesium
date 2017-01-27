@@ -292,6 +292,23 @@ define([
         return this._orientedBoundingBox.intersectPlane(plane);
     };
 
+    TileBoundingRegion.prototype.intersectCullingVolume = function(volume) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(volume)) {
+            throw new DeveloperError('volume is required.');
+        }
+        //>>includeEnd('debug');
+        return this._orientedBoundingBox.intersectCullingVolume(volume);
+    };
+
+    TileBoundingRegion.prototype.intersectConvexPolygonShadow = function(points) {
+        return this._orientedBoundingBox.intersectConvexPolygonShadow(points);
+    };
+
+    TileBoundingRegion.prototype.intersectRectangleShadow = function(center, right, up, normal) {
+        return this._orientedBoundingBox.intersectRectangleShadow(this, center, right, up, normal);
+    };
+
     /**
      * Creates a debug primitive that shows the outline of the tile bounding region.
      *

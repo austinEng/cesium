@@ -270,7 +270,7 @@ define([
                     out2++;
                 }
             }
-            if (out1 === 8 || out2 === 8) {
+            if (out1 === length || out2 === length) {
                 return Intersect.OUTSIDE;
             }
             inside &= (out1 === 0 && out2 === 0);
@@ -313,6 +313,105 @@ define([
         }
     };
 
+    var scratchPoints = [
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3(),
+        new Cartesian3()
+    ];
+    AxisAlignedBoundingBox.intersectRectangleShadow = function(box, center, right, up, normal) {
+        var result;
+        result = scratchPoints[0];
+        Cartesian3.subtract(center, right, result);
+        Cartesian3.subtract(result, up, result);
+
+        result = scratchPoints[1];
+        Cartesian3.add(center, right, result);
+        Cartesian3.subtract(result, up, result);
+
+        result = scratchPoints[2];
+        Cartesian3.add(center, right, result);
+        Cartesian3.add(result, up, result);
+
+        result = scratchPoints[3];
+        Cartesian3.subtract(center, right, result);
+        Cartesian3.add(result, up, result);
+
+        return AxisAlignedBoundingBox.intersectConvexPolygonShadow(box, scratchPoints, normal);
+    };
+
+    var scratchPlane2 = new Plane(Cartesian3.ZERO, 0.0);
+    AxisAlignedBoundingBox.intersectConvexPolygonShadow = function(box, points, normal) {
+        var planeIntersection = box.intersectPlane(Plane.fromPointNormal(points[0], normal, scratchPlane2));
+        if (planeIntersection === Intersect.OUTSIDE) {
+            return planeIntersection;
+        }
+
+        var length = points.length;
+        var diffs = scratchDiffs;
+        // vectors from volume corners to the box
+        for (var j = 0; j < length; ++j) {
+            Cartesian3.subtract(points[j], box.center, diffs[j]);
+        }
+
+        var diag = Cartesian3.subtract(box.maximum, box.minumum, scratchCartesian);
+
+        var intersecting = false;
+        var out1, out2, proj, axis;
+        out1 = 0;
+        out2 = 0;
+        // for each slab of the box, check if all points are on one side
+        for (j = 0; j < length; ++j) {
+            proj = diffs[j].x;
+            axis = diag.x / 2;
+            if (proj >= axis) {
+                out1++;
+            } else if (proj < -axis) {
+                out2++;
+            }
+        }
+        if (out1 === length || out2 === length) {
+            return Intersect.OUTSIDE;
+        }
+        intersecting |= (out1 !== 0 || out2 !== 0);
+
+        out1 = 0;
+        out2 = 0;
+        // for each slab of the box, check if all points are on one side
+        for (j = 0; j < length; ++j) {
+            proj = diffs[j].y;
+            axis = diag.y / 2;
+            if (proj >= axis) {
+                out1++;
+            } else if (proj < -axis) {
+                out2++;
+            }
+        }
+        if (out1 === 8 || out2 === 8) {
+            return Intersect.OUTSIDE;
+        }
+        intersecting |= (out1 !== 0 || out2 !== 0);
+
+        out1 = 0;
+        out2 = 0;
+        // for each slab of the box, check if all points are on one side
+        for (j = 0; j < length; ++j) {
+            proj = diffs[j].z;
+            axis = diag.z / 2;
+            if (proj >= axis) {
+                out1++;
+            } else if (proj < -axis) {
+                out2++;
+            }
+        }
+        if (out1 === 8 || out2 === 8) {
+            return Intersect.OUTSIDE;
+        }
+        intersecting |= (out1 !== 0 || out2 !== 0);
+
+        return intersecting ? Intersect.INTERSECTING : planeIntersection;
+    };
+
     /**
      * Duplicates this AxisAlignedBoundingBox instance.
      *
@@ -346,6 +445,14 @@ define([
      */
     AxisAlignedBoundingBox.prototype.intersectCullingVolume = function(volume) {
         return AxisAlignedBoundingBox.intersectCullingVolume(this, volume);
+    };
+
+    AxisAlignedBoundingBox.prototype.intersectConvexPolygonShadow = function(points, normal) {
+        return AxisAlignedBoundingBox.intersectConvexPolygonShadow(this, points, normal);
+    };
+
+    AxisAlignedBoundingBox.prototype.intersectRectangleShadow = function(center, right, up, normal) {
+        return AxisAlignedBoundingBox.intersectRectangleShadow(this, center, right, up, normal);
     };
 
     /**

@@ -52,13 +52,13 @@ define([
         },
         /**
          * The underlying bounding sphere
-         * 
+         *
          * @memberof TileOrientedBoundingBox.prototype
-         * 
+         *
          * @type {BoundingSphere}
          * @readonly
          */
-        boundingSphere : { 
+        boundingSphere : {
             get : function() {
                 return this._boundingSphere;
             }
@@ -96,6 +96,18 @@ define([
         }
         //>>includeEnd('debug');
         return this._orientedBoundingBox.intersectPlane(plane);
+    };
+
+    TileOrientedBoundingBox.prototype.intersectCullingVolume = function(volume) {
+        return this._orientedBoundingBox.intersectCullingVolume(volume);
+    };
+
+    TileOrientedBoundingBox.prototype.intersectConvexPolygonShadow = function(points, normal) {
+        return this._orientedBoundingBox.intersectConvexPolygonShadow(points, normal);
+    };
+
+    TileOrientedBoundingBox.prototype.intersectRectangleShadow = function(center, right, up, normal) {
+        return this._orientedBoundingBox.intersectRectangleShadow(this, center, right, up, normal);
     };
 
     /**

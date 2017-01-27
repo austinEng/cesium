@@ -121,8 +121,21 @@ define([
             throw new DeveloperError('boundingVolume is required.');
         }
         //>>includeEnd('debug');
+        // console.log(boundingVolume);
+        // return boundingVolume.intersectCullingVolume(this);
 
-        return boundingVolume.intersectCullingVolume(this);
+        var planes = this.planes;
+        var intersecting = false;
+        for (var k = 0, len = planes.length; k < len; ++k) {
+            var result = boundingVolume.intersectPlane(Plane.fromCartesian4(planes[k], scratchPlane));
+            if (result === Intersect.OUTSIDE) {
+                return Intersect.OUTSIDE;
+            } else if (result === Intersect.INTERSECTING) {
+                intersecting = true;
+            }
+        }
+
+        return intersecting ? Intersect.INTERSECTING : Intersect.INSIDE;
     };
 
     /**
@@ -151,6 +164,20 @@ define([
             // parent is completely outside or completely inside, so this child is as well.
             return parentPlaneMask;
         }
+
+        // var res = boundingVolume.intersectCullingVolume(this) === Intersect.OUTSIDE;
+        // if (res !== Intersect.OUTSIDE) {
+        //     return res;
+        //
+        // }
+        var res = boundingVolume.intersectCullingVolume(this);
+        if (res === Intersect.OUTSIDE) {
+            // console.log('culled mask', mask, parentPlaneMask);
+            return CullingVolume.MASK_OUTSIDE;
+        }/* else if (res === Intersect.INSIDE) {
+            return CullingVolume.MASK_INSIDE;
+        }*/
+
 
         // Start with MASK_INSIDE (all zeros) so that after the loop, the return value can be compared with MASK_INSIDE.
         // (Because if there are fewer than 31 planes, the upper bits wont be changed.)

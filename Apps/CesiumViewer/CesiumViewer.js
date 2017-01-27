@@ -1,33 +1,47 @@
 /*global define*/
 define([
-        'Cesium/Core/Cartesian3',
-        'Cesium/Core/defined',
-        'Cesium/Core/formatError',
-        'Cesium/Core/Math',
-        'Cesium/Core/objectToQuery',
-        'Cesium/Core/queryToObject',
-        'Cesium/DataSources/CzmlDataSource',
-        'Cesium/DataSources/GeoJsonDataSource',
-        'Cesium/DataSources/KmlDataSource',
-        'Cesium/Scene/createTileMapServiceImageryProvider',
-        'Cesium/Widgets/Viewer/Viewer',
-        'Cesium/Widgets/Viewer/viewerCesiumInspectorMixin',
-        'Cesium/Widgets/Viewer/viewerDragDropMixin',
-        'domReady!'
-    ], function(
-        Cartesian3,
-        defined,
-        formatError,
-        CesiumMath,
-        objectToQuery,
-        queryToObject,
-        CzmlDataSource,
-        GeoJsonDataSource,
-        KmlDataSource,
-        createTileMapServiceImageryProvider,
-        Viewer,
-        viewerCesiumInspectorMixin,
-        viewerDragDropMixin) {
+    'Cesium/Core/Cartesian3',
+    'Cesium/Core/Matrix4',
+    'Cesium/Core/HeadingPitchRange',
+    'Cesium/Scene/Cesium3DTileset',
+    'Cesium/Scene/DebugCameraPrimitive',
+    'Cesium/Core/Color',
+    'Cesium/Core/defined',
+    'Cesium/Core/formatError',
+    'Cesium/Core/Math',
+    'Cesium/Core/objectToQuery',
+    'Cesium/Core/queryToObject',
+    'Cesium/DataSources/CzmlDataSource',
+    'Cesium/DataSources/GeoJsonDataSource',
+    'Cesium/DataSources/KmlDataSource',
+    'Cesium/Scene/createTileMapServiceImageryProvider',
+    'Cesium/Widgets/Viewer/Viewer',
+    'Cesium/Widgets/Viewer/viewerCesiumInspectorMixin',
+    'Cesium/Widgets/Viewer/viewerDragDropMixin',
+    'Cesium/Widgets/Viewer/viewerCesium3DTilesInspectorMixin',
+    'domReady!'
+    // 'when!'
+], function(
+    Cartesian3,
+    Matrix4,
+    HeadingPitchRange,
+    Cesium3DTileset,
+    DebugCameraPrimitive,
+    Color,
+    defined,
+    formatError,
+    CesiumMath,
+    objectToQuery,
+    queryToObject,
+    CzmlDataSource,
+    GeoJsonDataSource,
+    KmlDataSource,
+    createTileMapServiceImageryProvider,
+    Viewer,
+    viewerCesiumInspectorMixin,
+    viewerDragDropMixin,
+    viewerCesium3DTilesInspectorMixin
+) {
     'use strict';
 
     /*
@@ -194,4 +208,73 @@ define([
     }
 
     loadingIndicator.style.display = 'none';
+
+
+    var tileset = scene.primitives.add(new Cesium3DTileset({
+        url : '../../../Specs/Data/Cesium3DTiles/Tilesets/PhiladelphiaHiResRealityModel/'
+    }));
+
+    // viewer.extend(viewerCesium3DTilesInspectorMixin);
+    // viewer.cesium3DTilesInspector.viewModel.tileset = tileset
+    // viewer.cesium3DTilesInspector._inspectorModel.loggingVisible = true;
+    // viewer.cesium3DTilesInspector.viewModel.showPickStats = false;
+    // viewer.cesium3DTilesInspector.viewModel.performance = true;
+    // viewer.cesium3DTilesInspector.viewModel.picking = false;
+
+    viewer.extend(viewerCesiumInspectorMixin);
+
+    // viewer.camera.frustum.near = 10;
+    // viewer.camera.frustum.far = 80;
+    // viewer.camera.fov = CesiumMath.toRadians(1.0);
+    // var mat = viewer.camera.frustum.projectionMatrix;
+    // viewer.scene.farToNearRatio = 5;
+    // viewer.scene.debugShowFrustums = true;
+    // viewer.camera.fovy = CesiumMath.toRadians(5.0);
+
+    viewer.camera.setView({
+        destination: Cartesian3.fromDegrees(-75.16833279479728, 39.955036359566144, 5.54959930463062),
+        orientation: {
+            heading: CesiumMath.toRadians(360),
+            pitch: CesiumMath.toRadians(-90),
+            roll: CesiumMath.toRadians(360)
+        }
+    });
+
+    viewer.camera.setView({
+        destination: Cartesian3.fromDegrees(-75.16833279479728, 39.955036359566144, 16.493615387751476),
+        orientation: {
+            heading: CesiumMath.toRadians(105),
+            pitch: CesiumMath.toRadians(-15),
+            roll: CesiumMath.toRadians(0)
+        }
+    });
+
+    // one culled
+    // viewer.camera.setView({
+    //     destination: Cartesian3.fromDegrees(-75.16826530168719, 39.95504182319223, 61.62056005740504),
+    //     orientation: {
+    //         heading: CesiumMath.toRadians(94.83988108675425),
+    //         pitch: CesiumMath.toRadians(-56.246968323828845),
+    //         roll: CesiumMath.toRadians(0.33940914988382587)
+    //     }
+    // });
+
+    //http://localhost:8080/Apps/CesiumViewer/index.html?view=-75.16925239501263%2C39.95650474728639%2C381.5373866141179%2C133.43457404385882%2C-50.32769805603576%2C0.21477836522945457
+
+    // viewer.camera.setView({
+    //     destination: Cartesian3.fromDegrees(-75.16925239501263, 39.95650474728639, 381.5373866141179),
+    //     orientation: {
+    //         heading: CesiumMath.toRadians(133.43457404385882),
+    //         pitch: CesiumMath.toRadians(-50.32769805603576),
+    //         roll: CesiumMath.toRadians(0.21477836522945457)
+    //     }
+    // });
+    viewer.camera.setView({
+        destination: Cartesian3.fromDegrees(-75.17917982244882, 39.964297965234266, 28.191975975882738),
+        orientation: {
+            heading: CesiumMath.toRadians(150.38934061853718),
+            pitch: CesiumMath.toRadians(-2.936527771144009),
+            roll: CesiumMath.toRadians(0.09366645508983115)
+        }
+    });
 });

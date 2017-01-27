@@ -15,7 +15,7 @@ define([
     '../../Core/ScreenSpaceEventHandler',
     '../../Core/ScreenSpaceEventType',
     '../createCommand',
-    'ThirdParty/when'
+    '../../ThirdParty/when'
     ], function(
         Cartesian3,
         Cartographic,

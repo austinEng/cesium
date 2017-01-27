@@ -3,6 +3,7 @@ define([
         '../Core/BoundingRectangle',
         '../Core/BoundingSphere',
         '../Core/BoxGeometry',
+        '../Core/BoxOutlineGeometry',
         '../Core/Cartesian2',
         '../Core/Cartesian3',
         '../Core/Cartesian4',
@@ -26,6 +27,7 @@ define([
         '../Core/JulianDate',
         '../Core/Math',
         '../Core/Matrix4',
+        '../Core/Matrix3',
         '../Core/mergeSort',
         '../Core/Occluder',
         '../Core/RequestScheduler',
@@ -72,6 +74,7 @@ define([
         BoundingRectangle,
         BoundingSphere,
         BoxGeometry,
+        BoxOutlineGeometry,
         Cartesian2,
         Cartesian3,
         Cartesian4,
@@ -95,6 +98,7 @@ define([
         JulianDate,
         CesiumMath,
         Matrix4,
+        Matrix3,
         mergeSort,
         Occluder,
         RequestScheduler,
@@ -1211,6 +1215,8 @@ define([
                 frustumCommands.near = curNear;
                 frustumCommands.far = curFar;
             }
+
+
         }
     }
 
@@ -1237,6 +1243,23 @@ define([
 
             if (distance.stop < curNear) {
                 break;
+            }
+
+            // console.log(command.boundingVolume);
+            // if (command.boundingVolume.intersectConvexPolygon(frustumCommands.farPoints) === Intersect.OUTSIDE) {
+            //     continue;
+            // }
+
+            // command._primitiveType = 0;
+            var res = command.boundingVolume.intersectRectangleShadow(frustumCommands.farCenter, frustumCommands.farRight, frustumCommands.farUp, frustumCommands.farNormal);
+            if (res === Intersect.OUTSIDE) {
+                // console.log('hi');
+                // command.debugShowBoundingVolume = true;
+                // debugger;
+                // command._primitiveType = 4;
+                continue;
+            } else {
+                // continue;
             }
 
             var pass = command instanceof ClearCommand ? Pass.OPAQUE : command.pass;
@@ -1294,7 +1317,13 @@ define([
             for (var p = 0; p < numberOfPasses; ++p) {
                 frustumCommandsList[n].indices[p] = 0;
             }
+            // debugger;
+            frustumCommandsList[n].computeFarSlice(camera);
+            // frustumCommandsList[n].computeFarSlice(camera.positionWC, camera.directionWC, camera.upWC);
+            // camera.frustum.computeFarSlice(camera.positionWC, camera.directionWC, camera.upWC, frustumCommandsList[n]);
+            // camera.frustum.computeCornersAtSlice(camera.positionWC, camera.directionWC, camera.upWC, frustumCommandsList[n].far, frustumCommandsList[n].farPoints);
         }
+
 
         computeList.length = 0;
         overlayList.length = 0;
@@ -2360,7 +2389,88 @@ define([
 
     var scratchEyeTranslation = new Cartesian3();
 
+    var added = [];
     function render(scene, time) {
+
+        for (var i = 0; i < added.length; ++i) {
+            scene.primitives.remove(added[i]);
+        }
+        var frustumCommandsList = scene._frustumCommandsList;
+        var numberOfFrustums = frustumCommandsList.length;
+        for (var n = 0; n < numberOfFrustums; ++n) {
+            var c = frustumCommandsList[n];
+            // var prim = new Primitive({
+            //     geometryInstances: new GeometryInstance({
+            //         geometry: box,
+            //         modelMatrix: Matrix4.fromColumnMajorArray([
+            //             c.farRight.x, c.farRight.y, c.farRight.z, 0,
+            //             c.farUp.x, c.farUp.y, c.farUp.z, 0,
+            //             c.farNormal.x, c.farNormal.y, c.farNormal.z, 0,
+            //             c.farCenter.x, c.farCenter.y, c.farCenter.z, 1
+            //         ]),
+            //         attributes: {
+            //             color: Color.YELLOW
+            //         }
+            //     })
+            //     // appearance : new PerInstanceColorAppearance()
+            // });
+            c.computeFarSlice(scene.camera);
+            var x = Cartesian3.normalize(c.farRight, new Cartesian3());
+            var y = Cartesian3.normalize(c.farUp, new Cartesian3());
+            var z = Cartesian3.normalize(c.farNormal, new Cartesian3());
+            // debugger;
+            /*
+            var prim = new Primitive({
+                geometryInstances : new GeometryInstance({
+                    // geometry : BoxGeometry.fromDimensions({
+                    //     dimensions : new Cartesian3(1, 1, 1),
+                    //     vertexFormat : PerInstanceColorAppearance.VERTEX_FORMAT
+                    // }),
+                    geometry: new BoxOutlineGeometry({
+                        minimum: new Cartesian3(-0.5, -0.5, -0.05),
+                        maximum: new Cartesian3(0.5, 0.5, 0.05)
+                    }),
+                    modelMatrix : Matrix4.fromColumnMajorArray([
+                        c.farRight.x, c.farRight.y, c.farRight.z, 0,
+                        c.farUp.x, c.farUp.y, c.farUp.z, 0,
+                        c.farNormal.x, c.farNormal.y, c.farNormal.z, 0,
+                        c.farCenter.x, c.farCenter.y, c.farCenter.z, 1
+                    ]),
+                    // modelMatrix: Matrix4.multiply(
+                    //     Matrix4.fromTranslation(new Cartesian3(c.farCenter.x, c.farCenter.y, c.farCenter.z)),
+                    //     Matrix4.fromColumnMajorArray([
+                    //         c.farRight.x, c.farRight.y, c.farRight.z, 0,
+                    //         c.farUp.x, c.farUp.y, c.farUp.z, 0,
+                    //         c.farNormal.x, c.farNormal.y, c.farNormal.z, 0,
+                    //         0, 0, 0, 1
+                    //     ]),
+                    //     new Matrix4()
+                    // ),
+                    // modelMatrix: Matrix4.fromTranslation(new Cartesian3(c.farCenter.x, c.farCenter.y, c.farCenter.z)),
+                    // modelMatrix: Matrix4.fromRotationTranslation(Matrix3.fromColumnMajorArray([
+                    //     x.x, x.y, x.z,
+                    //     y.x, y.y, y.z,
+                    //     z.x, z.y, z.z
+                    // ]), new Cartesian3(c.farCenter.x, c.farCenter.y, c.farCenter.z)),
+                    attributes : {
+                        color : ColorGeometryInstanceAttribute.fromColor(Color.YELLOW)
+                    }
+                }),
+                appearance : new PerInstanceColorAppearance({
+                    translucent : false,
+                    flat : true
+                }),
+                asynchronous : false
+                // shadows : ShadowMode.DISABLED
+            });
+
+            // console.log(prim);
+            // debugger;
+            added.push(prim);
+            scene.primitives.add(prim);
+            */
+        }
+
         if (!defined(time)) {
             time = JulianDate.now();
         }

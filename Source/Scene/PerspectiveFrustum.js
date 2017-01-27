@@ -27,7 +27,7 @@ define([
      * frustum.fov = Cesium.Math.PI_OVER_THREE;
      * frustum.near = 1.0;
      * frustum.far = 2.0;
-     * 
+     *
      * @see PerspectiveOffCenterFrustum
      */
     function PerspectiveFrustum() {
@@ -209,6 +209,21 @@ define([
     PerspectiveFrustum.prototype.computeCullingVolume = function(position, direction, up) {
         update(this);
         return this._offCenterFrustum.computeCullingVolume(position, direction, up);
+    };
+
+    /**
+     * Computes the corner points of a slice of the frustum.
+     *
+     * @param {Cartesian3} position The eye position.
+     * @param {Cartesian3} direction The view direction.
+     * @param {Cartesian3} up The up direction.
+     * @param {Number} distance The distance from the eye to compute the slice.
+     * @param {Cartesian3[]} result The result.
+     * @returns {Cartesian3[]} An array of four Cartesian3's representing the corners of the frustum.
+     */
+    PerspectiveFrustum.prototype.computeCornersAtSlice = function(position, direction, up, distance, result) {
+        update(this);
+        return this._offCenterFrustum.computeCornersAtSlice(position, direction, up, distance, result);
     };
 
     /**
