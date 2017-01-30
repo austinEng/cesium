@@ -205,7 +205,8 @@ define([
                     translucent : false,
                     flat : true
                 }),
-                asynchronous : false
+                asynchronous : false,
+                cull: false
             });
 
             // Create the planes primitive
@@ -269,7 +270,8 @@ define([
                     translucent : true,
                     flat : true
                 }),
-                asynchronous : false
+                asynchronous : false,
+                cull: false
             });
         }
 
