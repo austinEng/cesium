@@ -92,6 +92,14 @@ define([
         debugShowFrustums.appendChild(document.createTextNode('Show Frustums'));
         debugShowFrustums.appendChild(frustumStats);
 
+        var binning = document.createElement('div');
+        generalSection.appendChild(binning);
+        var binningCheckbox = document.createElement('input');
+        binningCheckbox.type = 'checkbox';
+        binningCheckbox.setAttribute('data-bind', 'checked: accurateBinning, click: doAccurateBinning');
+        binning.appendChild(binningCheckbox);
+        binning.appendChild(document.createTextNode('Accurate Binning'));
+
         var performanceDisplay = document.createElement('div');
         generalSection.appendChild(performanceDisplay);
         var pdCheckbox = document.createElement('input');

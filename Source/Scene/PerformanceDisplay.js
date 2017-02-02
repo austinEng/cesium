@@ -18,6 +18,7 @@ define([
     /**
      * @private
      */
+    var avgCount = 60;
     function PerformanceDisplay(options) {
         options = defaultValue(options, defaultValue.EMPTY_OBJECT);
 
@@ -40,6 +41,11 @@ define([
         msElement.className = 'cesium-performanceDisplay-ms';
         this._msText = document.createTextNode("");
         msElement.appendChild(this._msText);
+        var msAvgElement = document.createElement('div');
+        msAvgElement.className = 'cesium-performanceDisplay-ms';
+        this._msAvgText = document.createTextNode("");
+        msAvgElement.appendChild(this._msAvgText);
+        display.appendChild(msAvgElement);
         display.appendChild(msElement);
         display.appendChild(fpsElement);
         this._container.appendChild(display);
@@ -49,6 +55,8 @@ define([
         this._time = undefined;
         this._fps = 0;
         this._frameTime = 0;
+        this._times = new Array(avgCount);
+        this._idx = 0;
     }
 
     /**
@@ -69,6 +77,9 @@ define([
 
         var frameTime = time - previousTime;
 
+        this._times[this._idx] = frameTime;
+        this._idx = (this._idx + 1) % avgCount;
+
         this._frameCount++;
         var fps = this._fps;
         var fpsElapsedTime = time - this._lastFpsSampleTime;
@@ -88,6 +99,13 @@ define([
             this._msText.nodeValue = frameTime.toFixed(2) + ' MS';
             this._frameTime = frameTime;
         }
+
+        var total = 0;
+        for (var i = 0; i < avgCount; ++i) {
+            total += this._times[i];
+        }
+        total /= avgCount;
+        this._msAvgText.nodeValue = total.toFixed(2) + ' MS';
 
     };
 

@@ -557,6 +557,8 @@ define([
          */
         this.copyGlobeDepth = false;
 
+        this.debugAccurateBinning = true;
+
         /**
          * Blends the atmosphere to geometry far from the camera for horizon views. Allows for additional
          * performance improvements by rendering less geometry and dispatching less terrain requests.
@@ -1245,15 +1247,17 @@ define([
                 break;
             }
 
-            var boundingVolume;
-            if (defined(command._orientedBoundingBox)) {
-                boundingVolume = command._orientedBoundingBox;
-            } else {
-                boundingVolume = command.boundingVolume;
-            }
-            var res = boundingVolume.intersectRectangleShadow(frustumCommands.farCenter, frustumCommands.farRight, frustumCommands.farUp, frustumCommands.farNormal);
-            if (res === Intersect.OUTSIDE) {
-                continue;
+            if (scene.debugAccurateBinning) {
+                var boundingVolume;
+                if (defined(command._orientedBoundingBox)) {
+                    boundingVolume = command._orientedBoundingBox;
+                } else {
+                    boundingVolume = command.boundingVolume;
+                }
+                var res = boundingVolume.intersectRectangleShadow(frustumCommands.farCenter, frustumCommands.farRight, frustumCommands.farUp, frustumCommands.farNormal);
+                if (res === Intersect.OUTSIDE) {
+                    continue;
+                }
             }
 
             var pass = command instanceof ClearCommand ? Pass.OPAQUE : command.pass;
@@ -1311,13 +1315,8 @@ define([
             for (var p = 0; p < numberOfPasses; ++p) {
                 frustumCommandsList[n].indices[p] = 0;
             }
-            // debugger;
             frustumCommandsList[n].computeFarSlice(camera);
-            // frustumCommandsList[n].computeFarSlice(camera.positionWC, camera.directionWC, camera.upWC);
-            // camera.frustum.computeFarSlice(camera.positionWC, camera.directionWC, camera.upWC, frustumCommandsList[n]);
-            // camera.frustum.computeCornersAtSlice(camera.positionWC, camera.directionWC, camera.upWC, frustumCommandsList[n].far, frustumCommandsList[n].farPoints);
         }
-
 
         computeList.length = 0;
         overlayList.length = 0;

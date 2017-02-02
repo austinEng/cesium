@@ -211,7 +211,7 @@ define([
 
 
     var tileset = scene.primitives.add(new Cesium3DTileset({
-        url : '../../../Specs/Data/Cesium3DTiles/Tilesets/PhiladelphiaHiResRealityModel/'
+        url : '/tilesets/PhiladelphiaHiResRealityModel/'
     }));
 
     // viewer.extend(viewerCesium3DTilesInspectorMixin);

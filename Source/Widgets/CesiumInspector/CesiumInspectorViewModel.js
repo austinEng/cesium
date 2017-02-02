@@ -297,10 +297,18 @@ define([
          */
         this.terrainSwitchText = '+';
 
+        this.accurateBinning = true;
+
         knockout.track(this, ['filterTile', 'suspendUpdates', 'dropDownVisible', 'shaderCacheText', 'frustums',
+                              'accurateBinning',
                               'frustumStatisticText', 'pickTileActive', 'pickPrimitiveActive', 'hasPickedPrimitive',
                               'hasPickedTile', 'tileText', 'generalVisible', 'generalSwitchText',
                               'primitivesVisible', 'primitivesSwitchText', 'terrainVisible', 'terrainSwitchText', 'depthFrustumText']);
+
+        this._doAccurateBinning = createCommand(function() {
+            that._scene.debugAccurateBinning = that.accurateBinning;
+            return true;
+        });
 
         this._toggleDropDown = createCommand(function() {
             that.dropDownVisible = !that.dropDownVisible;
@@ -524,6 +532,12 @@ define([
         scene : {
             get : function() {
                 return this._scene;
+            }
+        },
+
+        doAccurateBinning: {
+            get: function() {
+                return this._doAccurateBinning;
             }
         },
 
