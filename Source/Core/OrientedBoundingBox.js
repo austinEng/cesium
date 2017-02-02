@@ -495,7 +495,24 @@ define([
         new Cartesian3(),
         new Cartesian3()
     ];
+    var scratchNormal = new Cartesian3();
+
+    /**
+     * Determines if an oriented bounding box overlaps the volume of the shadow cast by a rectangle in the direction of its normal.
+     *
+     * @param {OrientedBoundingBox} box The oriented bounding box to test.
+     * @param {Cartesian3} center The center of the rectangle.
+     * @param {Cartesian3} right The vector from the center to right edge of the rectangle.
+     * @param {Cartesian3} up The vector from the center to top edge o the rectangle. Expected to be perpendicular to right.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the rectangle normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
     OrientedBoundingBox.intersectRectangleShadow = function(box, center, right, up, normal) {
+        if (!defined(normal)) {
+            normal = Cartesian3.cross(up, right, scratchNormal);
+        }
         var result;
         result = scratchPoints[0];
         Cartesian3.subtract(center, right, result);
@@ -517,7 +534,29 @@ define([
     };
 
     var scratchPlane2 = new Plane(Cartesian3.ZERO, 0.0);
+    var scratchLine1 = new Cartesian3();
+    var scratchLine2 = new Cartesian3();
+
+    /**
+     * Determines if an oriented bounding box overlaps the volume of the shadow cast by a convex polygon in the direction of its normal.
+     *
+     * @param {OrientedBoundingBox} box The oriented bounding box to test.
+     * @param {Cartesian3[]} points The points of the convex polygon in counter-clockwise order.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the polygon normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
     OrientedBoundingBox.intersectConvexPolygonShadow = function(box, points, normal) {
+        //>>includeStart('debug', pragmas.debug);
+        Check.numeric.minimum(points.length, 3);
+        //>>includeEnd('debug');
+        if (!defined(normal)) {
+            Cartesian3.subtract(points[2], points[1], scratchLine1);
+            Cartesian3.subtract(points[1], points[0], scratchLine2);
+            normal = Cartesian3.cross(scratchLine1, scratchLine2, scratchNormal);
+        }
+
         var planeIntersection = box.intersectPlane(Plane.fromPointNormal(points[0], normal, scratchPlane2));
         if (planeIntersection === Intersect.OUTSIDE) {
             return planeIntersection;
@@ -825,10 +864,30 @@ define([
         return OrientedBoundingBox.intersectCullingVolume(this, volume);
     };
 
+    /**
+     * Determines if this box overlaps the volume of the shadow cast by a convex polygon in the direction of its normal.
+     *
+     * @param {Cartesian3[]} points The points of the convex polygon in counter-clockwise order.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the polygon normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
     OrientedBoundingBox.prototype.intersectConvexPolygonShadow = function(points, normal) {
         return OrientedBoundingBox.intersectConvexPolygonShadow(this, points, normal);
     };
 
+    /**
+     * Determines if this box overlaps the volume of the shadow cast by a rectangle in the direction of its normal.
+     *
+     * @param {Cartesian3} center The center of the rectangle.
+     * @param {Cartesian3} right The vector from the center to right edge of the rectangle.
+     * @param {Cartesian3} up The vector from the center to top edge o the rectangle. Expected to be perpendicular to right.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the rectangle normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
     OrientedBoundingBox.prototype.intersectRectangleShadow = function(center, right, up, normal) {
         return OrientedBoundingBox.intersectRectangleShadow(this, center, right, up, normal);
     };

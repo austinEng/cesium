@@ -965,6 +965,15 @@ define([
     };
 
     var scratchPlane = new Plane(Cartesian3.ZERO, 0);
+    /**
+     * Determines if a sphere overlaps a culling volume
+     *
+     * @param {BoundingSphere} sphere The bounding sphere to test.
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire sphere is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire sphere is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the sphere partially overlaps the volume
+     */
     BoundingSphere.intersectCullingVolume = function(sphere, volume) {
         //>>includeStart('debug', pragmas.debug);
         Check.typeOf.object(sphere, 'sphere');
@@ -997,6 +1006,18 @@ define([
         new Cartesian3()
     ];
 
+    /**
+     * Determines if a sphere overlaps the volume of the shadow cast by a rectangle in the direction of its normal.
+     *
+     * @param {BoundingSphere} sphere The bounding sphere to test.
+     * @param {Cartesian3} center The center of the rectangle.
+     * @param {Cartesian3} right The vector from the center to right edge of the rectangle.
+     * @param {Cartesian3} up The vector from the center to top edge o the rectangle. Expected to be perpendicular to right.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the rectangle normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire sphere is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire sphere is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the sphere partially overlaps the volume
+     */
     BoundingSphere.intersectRectangleShadow = function(sphere, center, right, up, normal) {
         var sphereRadius = sphere.radius;
         var sphereCenter = sphere.center;
@@ -1024,113 +1045,6 @@ define([
         }
 
         if (distanceRight <= (rightLength - sphereRadius) * rightLength && distanceUp <= (upLength - sphereRadius) * upLength) {
-            return Intersect.INSIDE;
-        }
-
-        return Intersect.INTERSECTING;
-
-
-        // if (dx < -(rightLen + sphereRadius) || dx >= rightLen + sphereRadius) {
-        //     return Intersect.OUTSIDE;
-        // }
-    };
-
-    BoundingSphere.intersectFrustumPlane = function(sphere, points) {
-        var e1 = Cartesian3.subtract(points[1], points[0], scratch1);
-        var e2 = Cartesian3.subtract(points[2], points[1], scratch2);
-        var normal = Cartesian3.cross(e1, e2, scratchN);
-        Cartesian3.normalize(normal, normal);
-
-        var center = sphere.center;
-        var radius = sphere.radius;
-        var toPlane = Cartesian3.subtract(points[0], center, scratch1);
-        var distance = Cartesian3.dot(normal, toPlane);
-
-        if (distance >= radius) {
-            return Intersect.OUTSIDE;
-        } else {
-            var circleCenter  = Cartesian3.add(center, Cartesian3.multiplyByScalar(normal, distance, scratch2), scratch3);
-            var circleRadiusSquared = Math.pow(radius, 2) - Math.pow(distance, 2);
-
-            for (var i = 0; i < length; ++i) {
-
-            }
-        }/*else if (distance >= 0) {
-            var length = points.length;
-            var i;
-            for (i = 0; i < length; ++i) {
-                Cartesian3.subtract(points[i], center, diffs[i]);
-            }
-
-            for (i = 0; i < length; ++i) {
-                var axis = Cartesian3.normalize(diffs[i], scratch1);
-
-                var min = Number.POSITIVE_INFINITY;
-                var max = Number.NEGATIVE_INFINITY;
-                for (var j = 0; j < length; ++j) {
-                    var proj = Cartesian3.dot(axis, diffs[j]);
-                    if (proj < min) {
-                        min = proj;
-                    }
-                    if (proj > max) {
-                        max = proj;
-                    }
-                }
-
-                if (max < -radius || min >= radius) {
-                    return Intersect.OUTSIDE;
-                }
-            }
-            return Intersect.INTERSECTING;
-        } else {
-            return Intersect.INSIDE;
-        }*/
-
-            /*var perp = Cartesian3.multiplyByScalar(normal, distance, scratch3);
-            var sign;
-            var outside = false;
-            for (var i = 0, length = points.length; i < length - 1; ++i) {
-                e1 = Cartesian3.subtract(points[i+1], points[i], scratch1);
-                e2 = Cartesian3.subtract(points[i+1], center, scratch2);
-                Cartesian3.subtract(e2, perp, e2);
-                var dot = Cartesian3.dot(normal, Cartesian3.cross(e1, e2, scratch1));
-
-                if (i === 0) {
-                    sign = dot;
-                    continue;
-                }
-                if (dot * sign < 0) {
-                    outside = true;
-                    break;
-                }
-            }
-
-            if (distance >= -radius) {
-
-            } else {
-                if (!outside) {
-
-                }
-            }
-        }*/
-
-
-        var boundingSphere = BoundingSphere.fromPoints(points, scratchSphere);
-        var d = Cartesian3.distanceSquared(boundingSphere.center, sphere.center);
-        var r1Squared = Math.pow(sphere.radius, 2);
-        var r2Squared = Math.pow(boundingSphere.radius, 2);
-
-        if (r1Squared + r2Squared >= d) {
-            return Intersect.OUTSIDE;
-        }
-
-        var temp;
-        if (r2Squared < r1Squared) {
-            temp = r2Squared;
-            r2Squared = r1Squared;
-            r1Squared = temp;
-        }
-        if (d + r1Squared < r2Squared) {
             return Intersect.INSIDE;
         }
 
@@ -1404,14 +1318,29 @@ define([
         return BoundingSphere.intersectPlane(this, plane);
     };
 
-    BoundingSphere.prototype.intersectCullingVolume = function(boundingVolume) {
-        return BoundingSphere.intersectCullingVolume(this, boundingVolume);
+    /**
+     * Determines if this sphere overlaps a culling volume
+     *
+     * @param {CullingVolume} volume The volume to test against.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire sphere is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire sphere is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the sphere partially overlaps the volume
+     */
+    BoundingSphere.prototype.intersectCullingVolume = function(volume) {
+        return BoundingSphere.intersectCullingVolume(this, volume);
     };
 
-    BoundingSphere.prototype.intersectConvexPolygon = function(points) {
-        return BoundingSphere.intersectConvexPolygon(this, points);
-    };
-
+    /**
+     * Determines if this sphere overlaps the volume of the shadow cast by a rectangle in the direction of its normal.
+     *
+     * @param {Cartesian3} center The center of the rectangle.
+     * @param {Cartesian3} right The vector from the center to right edge of the rectangle.
+     * @param {Cartesian3} up The vector from the center to top edge o the rectangle. Expected to be perpendicular to right.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the rectangle normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire sphere is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire sphere is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the sphere partially overlaps the volume
+     */
     BoundingSphere.prototype.intersectRectangleShadow = function(center, right, up, normal) {
         return BoundingSphere.intersectRectangleShadow(this, center, right, up, normal);
     };

@@ -121,8 +121,6 @@ define([
             throw new DeveloperError('boundingVolume is required.');
         }
         //>>includeEnd('debug');
-        // console.log(boundingVolume);
-        // return boundingVolume.intersectCullingVolume(this);
 
         var planes = this.planes;
         var intersecting = false;
@@ -136,6 +134,22 @@ define([
         }
 
         return intersecting ? Intersect.INTERSECTING : Intersect.INSIDE;
+    };
+
+    /**
+     * Determines whether a bounding volume intersects the culling volume. Performs a more accurate test than
+     * computeVisibility. Some bounding volumes may not support more accurate checks.
+     *
+     * @param {Object} boundingVolume The bounding volume whose intersection with the culling volume is to be tested.
+     * @returns {Intersect}  Intersect.OUTSIDE, Intersect.INTERSECTING, or Intersect.INSIDE.
+     */
+    CullingVolume.prototype.computeAccurateVisibility = function(boundingVolume) {
+        //>>includeStart('debug', pragmas.debug);
+        if (!defined(boundingVolume)) {
+            throw new DeveloperError('boundingVolume is required.');
+        }
+        //>>includeEnd('debug');
+        return boundingVolume.intersectCullingVolume(this);
     };
 
     /**

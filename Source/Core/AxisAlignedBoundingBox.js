@@ -216,7 +216,7 @@ define([
     /**
      * Determines if an axis aligned bounding box overlaps a culling volume
      *
-     * @param {AxisAlignedBoundingBox} box The oriented bounding box to test.
+     * @param {AxisAlignedBoundingBox} box The axis aligned bounding box to test.
      * @param {CullingVolume} volume The volume to test against.
      * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
      *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
@@ -319,6 +319,18 @@ define([
         new Cartesian3(),
         new Cartesian3()
     ];
+    /**
+     * Determines if an axis aligned bounding box overlaps the volume of the shadow cast by a rectangle in the direction of its normal.
+     *
+     * @param {AxisAlignedBoundingBox} box The axis aligned bounding box to test.
+     * @param {Cartesian3} center The center of the rectangle.
+     * @param {Cartesian3} right The vector from the center to right edge of the rectangle.
+     * @param {Cartesian3} up The vector from the center to top edge o the rectangle. Expected to be perpendicular to right.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the rectangle normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
     AxisAlignedBoundingBox.intersectRectangleShadow = function(box, center, right, up, normal) {
         var result;
         result = scratchPoints[0];
@@ -341,6 +353,16 @@ define([
     };
 
     var scratchPlane2 = new Plane(Cartesian3.ZERO, 0.0);
+    /**
+     * Determines if an axis aligned bounding box overlaps the volume of the shadow cast by a convex polygon in the direction of its normal.
+     *
+     * @param {AxisAlignedBoundingBox} box The axis aligned bounding box to test.
+     * @param {Cartesian3[]} points The points of the convex polygon in counter-clockwise order.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the polygon normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
     AxisAlignedBoundingBox.intersectConvexPolygonShadow = function(box, points, normal) {
         var planeIntersection = box.intersectPlane(Plane.fromPointNormal(points[0], normal, scratchPlane2));
         if (planeIntersection === Intersect.OUTSIDE) {
@@ -436,7 +458,7 @@ define([
     };
 
     /**
-     * Determines if this box box overlaps a culling volume
+     * Determines if this box overlaps a culling volume
      *
      * @param {CullingVolume} volume The volume to test against.
      * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
@@ -447,10 +469,30 @@ define([
         return AxisAlignedBoundingBox.intersectCullingVolume(this, volume);
     };
 
+    /**
+     * Determines if this box overlaps the volume of the shadow cast by a convex polygon in the direction of its normal.
+     *
+     * @param {Cartesian3[]} points The points of the convex polygon in counter-clockwise order.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the polygon normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
     AxisAlignedBoundingBox.prototype.intersectConvexPolygonShadow = function(points, normal) {
         return AxisAlignedBoundingBox.intersectConvexPolygonShadow(this, points, normal);
     };
 
+    /**
+     * Determines if this box overlaps the volume of the shadow cast by a rectangle in the direction of its normal.
+     *
+     * @param {Cartesian3} center The center of the rectangle.
+     * @param {Cartesian3} right The vector from the center to right edge of the rectangle.
+     * @param {Cartesian3} up The vector from the center to top edge o the rectangle. Expected to be perpendicular to right.
+     * @param {Cartesian3} normal The normal to use for shadow direction. Expected to be the same as the rectangle normal.
+     * @returns {Intersect} {@link Intersect.INSIDE} if the entire box is inside the volume,
+     *                      {@link Intersect.OUTSIDE} if the entire box is outside the volume,
+     *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
+     */
     AxisAlignedBoundingBox.prototype.intersectRectangleShadow = function(center, right, up, normal) {
         return AxisAlignedBoundingBox.intersectRectangleShadow(this, center, right, up, normal);
     };

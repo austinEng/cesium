@@ -1245,21 +1245,9 @@ define([
                 break;
             }
 
-            // console.log(command.boundingVolume);
-            // if (command.boundingVolume.intersectConvexPolygon(frustumCommands.farPoints) === Intersect.OUTSIDE) {
-            //     continue;
-            // }
-
-            // command._primitiveType = 0;
             var res = command.boundingVolume.intersectRectangleShadow(frustumCommands.farCenter, frustumCommands.farRight, frustumCommands.farUp, frustumCommands.farNormal);
             if (res === Intersect.OUTSIDE) {
-                // console.log('hi');
-                // command.debugShowBoundingVolume = true;
-                // debugger;
-                // command._primitiveType = 4;
                 continue;
-            } else {
-                // continue;
             }
 
             var pass = command instanceof ClearCommand ? Pass.OPAQUE : command.pass;
