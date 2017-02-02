@@ -569,6 +569,10 @@ define([
         // vectors from volume corners to the box
         for (var j = 0; j < length; ++j) {
             Cartesian3.subtract(points[j], box.center, diffs[j]);
+            var normalComponent = Cartesian3.dot(diffs[j], normal);
+            diffs[j].x -= normal.x * normalComponent;
+            diffs[j].y -= normal.y * normalComponent;
+            diffs[j].z -= normal.z * normalComponent;
         }
 
         for (var i = 0; i < 3; ++i) {

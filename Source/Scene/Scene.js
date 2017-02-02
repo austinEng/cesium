@@ -1245,7 +1245,13 @@ define([
                 break;
             }
 
-            var res = command.boundingVolume.intersectRectangleShadow(frustumCommands.farCenter, frustumCommands.farRight, frustumCommands.farUp, frustumCommands.farNormal);
+            var boundingVolume;
+            if (defined(command._orientedBoundingBox)) {
+                boundingVolume = command._orientedBoundingBox;
+            } else {
+                boundingVolume = command.boundingVolume;
+            }
+            var res = boundingVolume.intersectRectangleShadow(frustumCommands.farCenter, frustumCommands.farRight, frustumCommands.farUp, frustumCommands.farNormal);
             if (res === Intersect.OUTSIDE) {
                 continue;
             }

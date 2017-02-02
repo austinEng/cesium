@@ -2,6 +2,7 @@
 define([
         './Cartesian3',
         './Cartesian4',
+        './Check',
         './Plane',
         './defaultValue',
         './defined',
@@ -10,6 +11,7 @@ define([
     ], function(
         Cartesian3,
         Cartesian4,
+        Check,
         Plane,
         defaultValue,
         defined,
@@ -319,6 +321,7 @@ define([
         new Cartesian3(),
         new Cartesian3()
     ];
+    var scratchNormal = new Cartesian3();
     /**
      * Determines if an axis aligned bounding box overlaps the volume of the shadow cast by a rectangle in the direction of its normal.
      *
@@ -332,6 +335,9 @@ define([
      *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
      */
     AxisAlignedBoundingBox.intersectRectangleShadow = function(box, center, right, up, normal) {
+        if (!defined(normal)) {
+            normal = Cartesian3.cross(up, right, scratchNormal);
+        }
         var result;
         result = scratchPoints[0];
         Cartesian3.subtract(center, right, result);
@@ -353,6 +359,8 @@ define([
     };
 
     var scratchPlane2 = new Plane(Cartesian3.ZERO, 0.0);
+    var scratchLine1 = new Cartesian3();
+    var scratchLine2 = new Cartesian3();
     /**
      * Determines if an axis aligned bounding box overlaps the volume of the shadow cast by a convex polygon in the direction of its normal.
      *
@@ -364,6 +372,15 @@ define([
      *                      {@link Intersect.INTERSECTING} if the box partially overlaps the volume
      */
     AxisAlignedBoundingBox.intersectConvexPolygonShadow = function(box, points, normal) {
+        //>>includeStart('debug', pragmas.debug);
+        Check.numeric.minimum(points.length, 3);
+        //>>includeEnd('debug');
+        if (!defined(normal)) {
+            Cartesian3.subtract(points[2], points[1], scratchLine1);
+            Cartesian3.subtract(points[1], points[0], scratchLine2);
+            normal = Cartesian3.cross(scratchLine1, scratchLine2, scratchNormal);
+        }
+
         var planeIntersection = box.intersectPlane(Plane.fromPointNormal(points[0], normal, scratchPlane2));
         if (planeIntersection === Intersect.OUTSIDE) {
             return planeIntersection;
@@ -374,6 +391,10 @@ define([
         // vectors from volume corners to the box
         for (var j = 0; j < length; ++j) {
             Cartesian3.subtract(points[j], box.center, diffs[j]);
+            var normalComponent = Cartesian3.dot(diffs[j], normal);
+            diffs[j].x -= normal.x * normalComponent;
+            diffs[j].y -= normal.y * normalComponent;
+            diffs[j].z -= normal.z * normalComponent;
         }
 
         var diag = Cartesian3.subtract(box.maximum, box.minumum, scratchCartesian);
