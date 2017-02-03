@@ -49,6 +49,10 @@ define([
         this._time = undefined;
         this._fps = 0;
         this._frameTime = 0;
+
+        this._samples = 1000;
+        this._frames = new Array(this._samples);
+        this._idx = 0;
     }
 
     /**
@@ -69,6 +73,9 @@ define([
 
         var frameTime = time - previousTime;
 
+        this._frames[this._idx] = frameTime;
+        this._idx = (this._idx + 1) % this._samples;
+
         this._frameCount++;
         var fps = this._fps;
         var fpsElapsedTime = time - this._lastFpsSampleTime;
@@ -85,7 +92,11 @@ define([
         }
 
         if (frameTime !== this._frameTime) {
-            this._msText.nodeValue = frameTime.toFixed(2) + ' MS';
+            var total = 0;
+            for (var i = 0; i < this._samples; ++i) {
+                total += this._frames[i];
+            }
+            this._msText.nodeValue = (total / this._samples).toFixed(2) + ' MS';
             this._frameTime = frameTime;
         }
 
