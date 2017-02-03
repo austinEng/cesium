@@ -1287,9 +1287,19 @@ define([
                 // rendered instead
 
                 if ((sse <= maximumScreenSpaceError) || (childrenLength === 0)) {
+                    var hasVisibleChildren = false;
+                    for (k = 0; k < childrenLength; ++k) {
+                        child = children[k];
+                        if (child.visibility(frameState, visibilityPlaneMask) !== CullingVolume.MASK_OUTSIDE) {
+                            hasVisibleChildren = true;
+                            break;
+                        }
+                    }
                     // This tile meets the SSE so add its commands.
                     // Select tile if it's a leaf (childrenLength === 0)
-                    selectTile(tileset, t, fullyVisible, frameState);
+                    if (hasVisibleChildren) {
+                        selectTile(tileset, t, fullyVisible, frameState);
+                    }
                 } else if (!tileset._refineToVisible) {
                     // Tile does not meet SSE.
                     // Refine when all children (visible or not) are loaded.
