@@ -364,63 +364,6 @@ define([
         return this._cullingVolume;
     };
 
-    var scratchCartesian1 = new Cartesian3();
-    var scratchCartesian2 = new Cartesian3();
-
-    /**
-     * Computes the corner points of a slice of the frustum.
-     *
-     * @param {Cartesian3} position The eye position.
-     * @param {Cartesian3} direction The view direction.
-     * @param {Cartesian3} up The up direction.
-     * @param {Number} distance The distance from the eye to compute the slice.
-     * @param {Cartesian3[]} result The result.
-     * @returns {Cartesian3[]} An array of four Cartesian3's representing the corners of the frustum.
-     */
-    PerspectiveOffCenterFrustum.prototype.computeCornersAtSlice = function(position, direction, up, distance, result) {
-        var t = this.top;
-        var b = this.bottom;
-        var r = this.right;
-        var l = this.left;
-        var n = this.near;
-        var f = this.far;
-        var ratio = f / n;
-
-        var center = result[3];
-        Cartesian3.multiplyByScalar(direction, distance, center);
-        Cartesian3.add(position, center, center);
-
-        var right = Cartesian3.cross(direction, up, scratchCartesian1);
-        var normal = scratchCartesian2;
-        var point;
-
-        point = result[0];
-        Cartesian3.multiplyByScalar(right, ratio*l, normal);
-        Cartesian3.add(normal, center, point);
-        Cartesian3.multiplyByScalar(up, ratio*b, normal);
-        Cartesian3.add(normal, point, point);
-
-        point = result[1];
-        Cartesian3.multiplyByScalar(right, ratio*r, normal);
-        Cartesian3.add(normal, center, point);
-        Cartesian3.multiplyByScalar(up, ratio*b, normal);
-        Cartesian3.add(normal, point, point);
-
-        point = result[2];
-        Cartesian3.multiplyByScalar(right, ratio*r, normal);
-        Cartesian3.add(normal, center, point);
-        Cartesian3.multiplyByScalar(up, ratio*t, normal);
-        Cartesian3.add(normal, point, point);
-
-        point = result[3];
-        Cartesian3.multiplyByScalar(right, ratio*l, normal);
-        Cartesian3.add(normal, center, point);
-        Cartesian3.multiplyByScalar(up, ratio*t, normal);
-        Cartesian3.add(normal, point, point);
-
-        return result;
-    };
-
     /**
      * Returns the pixel's width and height in meters.
      *

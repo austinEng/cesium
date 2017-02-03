@@ -212,21 +212,6 @@ define([
     };
 
     /**
-     * Computes the corner points of a slice of the frustum.
-     *
-     * @param {Cartesian3} position The eye position.
-     * @param {Cartesian3} direction The view direction.
-     * @param {Cartesian3} up The up direction.
-     * @param {Number} distance The distance from the eye to compute the slice.
-     * @param {Cartesian3[]} result The result.
-     * @returns {Cartesian3[]} An array of four Cartesian3's representing the corners of the frustum.
-     */
-    PerspectiveFrustum.prototype.computeCornersAtSlice = function(position, direction, up, distance, result) {
-        update(this);
-        return this._offCenterFrustum.computeCornersAtSlice(position, direction, up, distance, result);
-    };
-
-    /**
      * Returns the pixel's width and height in meters.
      *
      * @param {Number} drawingBufferWidth The width of the drawing buffer.

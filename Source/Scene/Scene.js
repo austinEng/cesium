@@ -2392,76 +2392,7 @@ define([
         var numberOfFrustums = frustumCommandsList.length;
         for (var n = 0; n < numberOfFrustums; ++n) {
             var c = frustumCommandsList[n];
-            // var prim = new Primitive({
-            //     geometryInstances: new GeometryInstance({
-            //         geometry: box,
-            //         modelMatrix: Matrix4.fromColumnMajorArray([
-            //             c.farRight.x, c.farRight.y, c.farRight.z, 0,
-            //             c.farUp.x, c.farUp.y, c.farUp.z, 0,
-            //             c.farNormal.x, c.farNormal.y, c.farNormal.z, 0,
-            //             c.farCenter.x, c.farCenter.y, c.farCenter.z, 1
-            //         ]),
-            //         attributes: {
-            //             color: Color.YELLOW
-            //         }
-            //     })
-            //     // appearance : new PerInstanceColorAppearance()
-            // });
             c.computeFarSlice(scene.camera);
-            var x = Cartesian3.normalize(c.farRight, new Cartesian3());
-            var y = Cartesian3.normalize(c.farUp, new Cartesian3());
-            var z = Cartesian3.normalize(c.farNormal, new Cartesian3());
-            // debugger;
-            /*
-            var prim = new Primitive({
-                geometryInstances : new GeometryInstance({
-                    // geometry : BoxGeometry.fromDimensions({
-                    //     dimensions : new Cartesian3(1, 1, 1),
-                    //     vertexFormat : PerInstanceColorAppearance.VERTEX_FORMAT
-                    // }),
-                    geometry: new BoxOutlineGeometry({
-                        minimum: new Cartesian3(-0.5, -0.5, -0.05),
-                        maximum: new Cartesian3(0.5, 0.5, 0.05)
-                    }),
-                    modelMatrix : Matrix4.fromColumnMajorArray([
-                        c.farRight.x, c.farRight.y, c.farRight.z, 0,
-                        c.farUp.x, c.farUp.y, c.farUp.z, 0,
-                        c.farNormal.x, c.farNormal.y, c.farNormal.z, 0,
-                        c.farCenter.x, c.farCenter.y, c.farCenter.z, 1
-                    ]),
-                    // modelMatrix: Matrix4.multiply(
-                    //     Matrix4.fromTranslation(new Cartesian3(c.farCenter.x, c.farCenter.y, c.farCenter.z)),
-                    //     Matrix4.fromColumnMajorArray([
-                    //         c.farRight.x, c.farRight.y, c.farRight.z, 0,
-                    //         c.farUp.x, c.farUp.y, c.farUp.z, 0,
-                    //         c.farNormal.x, c.farNormal.y, c.farNormal.z, 0,
-                    //         0, 0, 0, 1
-                    //     ]),
-                    //     new Matrix4()
-                    // ),
-                    // modelMatrix: Matrix4.fromTranslation(new Cartesian3(c.farCenter.x, c.farCenter.y, c.farCenter.z)),
-                    // modelMatrix: Matrix4.fromRotationTranslation(Matrix3.fromColumnMajorArray([
-                    //     x.x, x.y, x.z,
-                    //     y.x, y.y, y.z,
-                    //     z.x, z.y, z.z
-                    // ]), new Cartesian3(c.farCenter.x, c.farCenter.y, c.farCenter.z)),
-                    attributes : {
-                        color : ColorGeometryInstanceAttribute.fromColor(Color.YELLOW)
-                    }
-                }),
-                appearance : new PerInstanceColorAppearance({
-                    translucent : false,
-                    flat : true
-                }),
-                asynchronous : false
-                // shadows : ShadowMode.DISABLED
-            });
-
-            // console.log(prim);
-            // debugger;
-            added.push(prim);
-            scene.primitives.add(prim);
-            */
         }
 
         if (!defined(time)) {

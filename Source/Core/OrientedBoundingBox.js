@@ -463,7 +463,9 @@ define([
             for (var i = 0; i < 3; ++i) {
                 // Compute the distance in the direction of the ith half axis from the origin to slabs of the box
                 var axis = scratchCartesian1;
-                axis.x = box.halfAxes[3*i]; axis.y = box.halfAxes[3*i+1]; axis.z = box.halfAxes[3*i+2];
+                axis.x = box.halfAxes[3*i];
+                axis.y = box.halfAxes[3*i+1];
+                axis.z = box.halfAxes[3*i+2];
                 var axisLengthSquared = Cartesian3.magnitudeSquared(axis);
 
                 var out1 = 0;
@@ -479,7 +481,6 @@ define([
                 }
 
                 if (out1 === 8 || out2 === 8) {
-                    // console.log('culled oob');
                     return Intersect.OUTSIDE;
                 }
 
