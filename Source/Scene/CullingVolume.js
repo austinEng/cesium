@@ -179,18 +179,12 @@ define([
             return parentPlaneMask;
         }
 
-        // var res = boundingVolume.intersectCullingVolume(this) === Intersect.OUTSIDE;
-        // if (res !== Intersect.OUTSIDE) {
-        //     return res;
-        //
-        // }
         var res = boundingVolume.intersectCullingVolume(this);
         if (res === Intersect.OUTSIDE) {
-            // console.log('culled mask', mask, parentPlaneMask);
             return CullingVolume.MASK_OUTSIDE;
-        }/* else if (res === Intersect.INSIDE) {
+        } else if (res === Intersect.INSIDE) {
             return CullingVolume.MASK_INSIDE;
-        }*/
+        }
 
 
         // Start with MASK_INSIDE (all zeros) so that after the loop, the return value can be compared with MASK_INSIDE.
