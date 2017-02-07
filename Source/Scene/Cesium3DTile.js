@@ -28,6 +28,7 @@ define([
         './Empty3DTileContent',
         './PerInstanceColorAppearance',
         './Primitive',
+        './PrimitiveCollection',
         './SceneMode',
         './TileBoundingRegion',
         './TileBoundingSphere',
@@ -61,6 +62,7 @@ define([
         Empty3DTileContent,
         PerInstanceColorAppearance,
         Primitive,
+        PrimitiveCollection,
         SceneMode,
         TileBoundingRegion,
         TileBoundingSphere,
@@ -682,7 +684,7 @@ define([
             }
 
             // Destroy the debug bounding volumes. They will be generated fresh.
-            this._debugBoundingVolume = this._debugBoundingVolume && this._debugBoundingVolume.destroy();
+                this._debugBoundingVolume = this._debugBoundingVolume && this._debugBoundingVolume.destroy();
             this._debugContentBoundingVolume = this._debugContentBoundingVolume && this._debugContentBoundingVolume.destroy();
             this._debugViewerRequestVolume = this._debugViewerRequestVolume && this._debugViewerRequestVolume.destroy();
         }
@@ -695,7 +697,12 @@ define([
         var showVolume = tileset.debugShowBoundingVolume || (tileset.debugShowContentBoundingVolume && !hasContentBoundingVolume);
         if (showVolume) {
             if (!defined(tile._debugBoundingVolume)) {
-                tile._debugBoundingVolume = tile._boundingVolume.createDebugVolume(hasContentBoundingVolume ? Color.WHITE : Color.RED);
+                // tile._debugBoundingVolume = tile._boundingVolume.createDebugVolume(hasContentBoundingVolume ? Color.WHITE : Color.RED);
+                tile._debugBoundingVolume = new PrimitiveCollection();
+                tile._debugBoundingVolume.add(tile._boundingVolume.createDebugVolume(hasContentBoundingVolume ? Color.WHITE : Color.RED));
+                for (var i = 0; i < tile.children.length; ++i) {
+                    tile._debugBoundingVolume.add(tile.children[i]._boundingVolume.createDebugVolume(Color.GREEN));
+                }
             }
             tile._debugBoundingVolume.update(frameState);
         } else if (!showVolume && defined(tile._debugBoundingVolume)) {
