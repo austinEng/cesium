@@ -5,6 +5,7 @@ define([
         '../Core/Cartesian3',
         '../Core/Color',
         '../Core/ColorGeometryInstanceAttribute',
+        '../Core/clone',
         '../Core/defaultValue',
         '../Core/defined',
         '../Core/defineProperties',
@@ -39,6 +40,7 @@ define([
         Cartesian3,
         Color,
         ColorGeometryInstanceAttribute,
+        clone,
         defaultValue,
         defined,
         defineProperties,
@@ -331,6 +333,8 @@ define([
         this._debugViewerRequestVolume = undefined;
         this._debugColor = new Color.fromRandom({ alpha : 1.0 });
         this._debugColorizeTiles = false;
+
+        this._optimizations = clone(tileset._optimizations);
     }
 
     defineProperties(Cesium3DTile.prototype, {

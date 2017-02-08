@@ -26,6 +26,7 @@ define([
         '../ThirdParty/when',
         './Cesium3DTile',
         './Cesium3DTileColorBlendMode',
+        './Cesium3DTileOptimizations',
         './Cesium3DTileRefine',
         './Cesium3DTileStyleEngine',
         './CullingVolume',
@@ -34,7 +35,8 @@ define([
         './ShadowMode',
         './TileBoundingRegion',
         './TileBoundingSphere',
-        './TileOrientedBoundingBox'
+        './TileOrientedBoundingBox',
+        './PrimitiveCollection'
     ], function(
         Cartesian3,
         Cartographic,
@@ -62,6 +64,7 @@ define([
         when,
         Cesium3DTile,
         Cesium3DTileColorBlendMode,
+        Cesium3DTileOptimizations,
         Cesium3DTileRefine,
         Cesium3DTileStyleEngine,
         CullingVolume,
@@ -70,7 +73,8 @@ define([
         ShadowMode,
         TileBoundingRegion,
         TileBoundingSphere,
-        TileOrientedBoundingBox) {
+        TileOrientedBoundingBox,
+        PrimitiveCollection) {
     'use strict';
 
     /**
@@ -270,7 +274,8 @@ define([
             lastColor : new Cesium3DTilesetStatistics(),
             lastPick : new Cesium3DTilesetStatistics()
         };
-
+        
+        this._optimizations = defaultValue(options.optimizations, new Cesium3DTileOptimizations());
         this._tilesLoaded = false;
 
         /**
@@ -822,6 +827,12 @@ define([
             get : function() {
                 return this._statistics;
             }
+        },
+
+        optimizations : {
+            get : function() {
+                return this._optimizations;
+            }
         }
     });
 
@@ -1125,11 +1136,20 @@ define([
         window.used = used;
         window.avoided = avoided;
 
-        function selectTile(tileset, tile, fullyVisible, frameState) {
-            used.add(tile);
-            if (avoided.has(tile)) {
-                avoided.delete(tile);
+        window.showNext = (function() {
+            var i = 0;
+            return function() {
+                var arr = Array.from(avoided);
+                var curr = arr[i].bv;
+                scene.primitives.remove(curr);
+                i = (i+1) % avoided.size;
+                curr = arr[i].bv;
+                scene.primitives.add(curr);
+                return arr[i];
             }
+        })()
+
+        function selectTile(tileset, tile, fullyVisible, frameState) {
             // There may also be a tight box around just the tile's contents, e.g., for a city, we may be
             // zoomed into a neighborhood and can cull the skyscrapers in the root node.
             if (tile.contentReady && (fullyVisible || (tile.contentsVisibility(frameState) !== Intersect.OUTSIDE))) {
@@ -1170,7 +1190,7 @@ define([
 
     function computeChildrenVisibility(tile, frameState, checkViewerRequestVolume) {
         var flag = NONE_VISIBLE;
-        var mask = 0;
+        // var mask = 0;
         var children = tile.children;
         var childrenLength = children.length;
         var visibilityPlaneMask = tile.visibilityPlaneMask;
@@ -1179,10 +1199,12 @@ define([
             child.visibilityPlaneMask = child.visibility(frameState, visibilityPlaneMask);
             if (isVisible(child.visibilityPlaneMask)) {
                 flag |= CHILDREN_VISIBLE;
-                if (!child.insideViewerRequestVolume(frameState)) {
-                    child.visibilityPlaneMask = CullingVolume.MASK_OUTSIDE;
-                } else {
-                    flag |= CHILDREN_VISIBLE_IN_REQUEST_VOLUME;
+                if (checkViewerRequestVolume) {
+                    if (!child.insideViewerRequestVolume(frameState)) {
+                        child.visibilityPlaneMask = CullingVolume.MASK_OUTSIDE;
+                    } else {
+                        flag |= CHILDREN_VISIBLE_IN_REQUEST_VOLUME;
+                    }
                 }
             }
         }
@@ -1320,18 +1342,49 @@ define([
                 // With replacement refinement, if the tile's SSE
                 // is not sufficient, its children (or ancestors) are
                 // rendered instead
-
+                var useChildrenBoundUnion = t._optimizations.checkChildrenWithinParent(t, true);
+                if (!useChildrenBoundUnion) {
+                    console.warn('Skipping children union bound optimization...')
+                    // debugger;
+                }
                 var anyChildrenVisible;
-
+                
                 if ((sse <= maximumScreenSpaceError) || (childrenLength === 0)) {
-                    anyChildrenVisible = computeChildrenVisibility(t, frameState, false);
-                    if (anyChildrenVisible !== NONE_VISIBLE || childrenLength === 0) {
-                        selectTile(tileset, t, fullyVisible, frameState);
-                    } else {
-                        if (!used.has(t)) {
+                    if (useChildrenBoundUnion) {
+                        updateTransforms(children, t.computedTransform);
+                        anyChildrenVisible = computeChildrenVisibility(t, frameState, false);
+                        if (anyChildrenVisible !== NONE_VISIBLE || childrenLength === 0) {
+                            // debugger;
+                            selectTile(tileset, t, fullyVisible, frameState);
+                        } else {
+                            debugger;
                             avoided.add(t);
+                            t.childrenVisibility = new Array(t.children.length)
+                            for (var i = 0; i < t.children.length; ++i) {
+                                t.childrenVisibility[i] = t.children[i].visibilityPlaneMask;
+                            }
+
+                            var h = Math.random();
+                            var grp = new PrimitiveCollection({
+                                destroyPrimitives: false
+                            });
+                            grp.add(t._boundingVolume.createDebugVolume(Color.fromHsl(h, 1, 0.5)));
+                            for (var i = 0; i < t.children.length; ++i) {
+                                grp.add(t.children[i]._boundingVolume.createDebugVolume(Color.fromHsl(h, 0.5, 0.8)));
+                            }
+                            t.bv = grp;
                         }
+                    } else {
+                        selectTile(tileset, t, fullyVisible, frameState);
                     }
+                    // if (useChildrenBoundUnion) {
+                    //     anyChildrenVisible = computeChildrenVisibility(t, frameState, false);
+                    //     if (anyChildrenVisible !== NONE_VISIBLE || childrenLength === 0) {
+                    //         selectTile(tileset, t, fullyVisible, frameState);
+                    //     }
+                    // } else {
+                        // selectTile(tileset, t, fullyVisible, frameState);
+                    // }
                 } else if (!tileset._refineToVisible) {
                     // Tile does not meet SSE.
                     // Refine when all children (visible or not) are loaded.
@@ -1352,10 +1405,9 @@ define([
                         children.sort(sortChildrenByDistanceToCamera);
                     }
 
-
                     if (!allChildrenLoaded) {
                         anyChildrenVisible = computeChildrenVisibility(t, frameState, false);
-                        if (anyChildrenVisible !== NONE_VISIBLE || childrenLength === 0) {
+                        // if (!useChildrenBoundUnion || anyChildrenVisible !== NONE_VISIBLE || childrenLength === 0) {
                             // Tile does not meet SSE.  Add its commands since it is the best we have and request its children.
                             selectTile(tileset, t, fullyVisible, frameState);
 
@@ -1373,30 +1425,15 @@ define([
                                     }
                                 }
                             }
-                        } else {
-                            if (!used.has(t)) {
-                                avoided.add(t);
-                            }
-                        }
+                        // }
                     } else {
                         // Tile does not meet SSE and its children are loaded.  Refine to them in front-to-back order.
                         anyChildrenVisible = computeChildrenVisibility(t, frameState, true);
                         for (k = 0; k < childrenLength; ++k) {
                             child = children[k];
-                            /*if (child.insideViewerRequestVolume(frameState)) {
-                                child.visibilityPlaneMask = child.visibility(frameState, visibilityPlaneMask);
-                            } else {
-                                child.visibilityPlaneMask = CullingVolume.MASK_OUTSIDE;
-                            }*/
 
                             if (isVisible(child.visibilityPlaneMask)) {
                                 stack.push(child);
-                                // if (child.insideViewerRequestVolume(frameState)) {
-                                    // stack.push(child);
-                                    // anyChildrenVisible |= CHILDREN_VISIBLE_IN_REQUEST_VOLUME
-                                // } else {
-                                //     child.visibilityPlaneMask = CullingVolume.MASK_OUTSIDE;
-                                // }
                             } else {
                                 // Touch the child tile even if it is not visible. Since replacement refinement
                                 // requires all child tiles to be loaded to refine to them, we want to keep it in the cache.
@@ -1409,14 +1446,10 @@ define([
                             if (defined(t.descendantsWithContent)) {
                                 scratchRefiningTiles.push(t);
                             }
-                        } else if (anyChildrenVisible & CHILDREN_VISIBLE || childrenLength === 0) {
+                        } else {//if (!useChildrenBoundUnion || anyChildrenVisible & CHILDREN_VISIBLE || childrenLength === 0) {
                             // Even though the children are all loaded they may not be visible if the camera
                             // is not inside their request volumes.
                             selectTile(tileset, t, fullyVisible, frameState);
-                        } else {
-                            if (!used.has(t)) {
-                                avoided.add(t);
-                            }
                         }
                     }
                 } else {
@@ -1428,10 +1461,7 @@ define([
                     updateTransforms(children, t.computedTransform);
                     anyChildrenVisible = computeChildrenVisibility(t, frameState, true);
 
-                    if (anyChildrenVisible === NONE_VISIBLE && childrenLength !== 0) {
-                        if (!used.has(t)) {
-                            avoided.add(t);
-                        }
+                    if (useChildrenBoundUnion && anyChildrenVisible === NONE_VISIBLE && childrenLength !== 0) {
                         continue;
                     }
 
@@ -1439,12 +1469,6 @@ define([
                     var someVisibleChildrenLoaded = false;
                     for (k = 0; k < childrenLength; ++k) {
                         child = children[k];
-                        // child.updateTransform(t.computedTransform);
-                        // if (child.insideViewerRequestVolume(frameState)) {
-                        //     child.visibilityPlaneMask = child.visibility(frameState, visibilityPlaneMask);
-                        // } else {
-                        //     child.visibilityPlaneMask = CullingVolume.MASK_OUTSIDE;
-                        // }
                         if (isVisible(child.visibilityPlaneMask)) {
                             if (child.contentReady) {
                                 someVisibleChildrenLoaded = true;

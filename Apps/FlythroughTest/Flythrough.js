@@ -5,6 +5,7 @@ define([
         'Cesium/Core/Matrix4',
         'Cesium/Core/HeadingPitchRange',
         'Cesium/Scene/Cesium3DTileset',
+        'Cesium/Scene/Cesium3DTileOptimizations',
         'Cesium/Core/defined',
         'Cesium/Core/formatError',
         'Cesium/Core/Math',
@@ -15,7 +16,7 @@ define([
         'Cesium/DataSources/KmlDataSource',
         'Cesium/Scene/createTileMapServiceImageryProvider',
         'Cesium/Widgets/Viewer/Viewer',
-        'Cesium/Widgets/Viewer/viewerCesiumInspectorMixin',
+        'Cesium/Widgets/Viewer/viewerCesium3DTilesInspectorMixin',
         'Cesium/Widgets/Viewer/viewerDragDropMixin',
         'domReady!'
     ], function(
@@ -24,6 +25,7 @@ define([
         Matrix4,
         HeadingPitchRange,
         Cesium3DTileset,
+        Cesium3DTileOptimizations,
         defined,
         formatError,
         CesiumMath,
@@ -34,7 +36,7 @@ define([
         KmlDataSource,
         createTileMapServiceImageryProvider,
         Viewer,
-        viewerCesiumInspectorMixin,
+        viewerCesium3DTilesInspectorMixin,
         viewerDragDropMixin) {
     'use strict';
 
@@ -65,7 +67,7 @@ define([
         return;
     }
 
-    viewer.extend(viewerCesiumInspectorMixin);
+    viewer.extend(viewerCesium3DTilesInspectorMixin);
 
     var scene = viewer.scene;
     scene.globe.show = false;
@@ -74,15 +76,7 @@ define([
     var context = scene.context;
 
     var tests = {
-        rio: {
-            url: 'https://beta.cesium.com/api/assets/266?access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJiODNmMjQzNy1mNGI4LTQ2ZTItOWI0NS0yZDUzMzMyNWMxNzQiLCJpZCI6OSwiaWF0IjoxNDgxODI5ODU0fQ.4fmVtksZ1CAzjPBprJ47uIuK0vr-8CcuDKM7M8a0mF4',
-            views: [
-                // city
-                queryToObject('view=-43.17432017295311%2C-22.901767831550135%2C123.1886826953149%2C231.00865711432857%2C-4.866764478249746%2C0.10820084546364604').view,
-                // mountains
-                queryToObject('view=-43.2764670108587%2C-22.931000967977575%2C577.2613718517274%2C148.46587195682494%2C-11.634366779238201%2C359.9262831951766').view
-            ]    
-        },
+        
         philly: {
             url: '/tilesets/PhiladelphiaHiResRealityModel/',
             views: [
@@ -104,13 +98,18 @@ define([
     // view = queryToObject('view=-74.01173968285764%2C40.701374752829%2C340.6077800729422%2C16.53031131078632%2C-12.181773955230803%2C0.05532413656164981').view;
 
     var dataset = tests.philly;
-    view = dataset.views[2];
+    view = dataset.views[1];
 
     var tileset = scene.primitives.add(new Cesium3DTileset({
         url: dataset.url
+        // , optimizations: new Cesium3DTileOptimizations({
+        //     childrenWithinParent: Cesium3DTileOptimizations.FLAGS.SUPPORTED
+        // })
         // ,debugShowBoundingVolume: true
         // ,debugShowContentBoundingVolume: true
     }));
+
+    viewer.cesium3DTilesInspector.viewModel.tileset = tileset;
 
     tileset.readyPromise.then(function(tileset) {
         var boundingSphere = tileset.boundingSphere;
