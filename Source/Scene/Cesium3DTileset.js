@@ -1074,8 +1074,12 @@ define([
                     if (!defined(that._loadHeaps[requestServer])) {
                         var heap = new Heap(sortForLoad);
                         that._loadHeaps[requestServer] = heap;
-                        heap.maximumSize = RequestScheduler.maximumRequestsPerServer;
-                        heap.reserve(heap.maximumSize);
+                        if (!requestServer._http2) {
+                            heap.maximumSize = RequestScheduler.maximumRequestsPerServer;
+                            heap.reserve(heap.maximumSize);
+                        } else {
+                            heap.maximumSize = RequestScheduler.maximumHTTP2RequestsPerServer;
+                        }
                     }
                     tile3D._loadHeap = that._loadHeaps[requestServer];
                 }

@@ -63,11 +63,13 @@ define([
     }
 
     RequestServer.prototype.hasAvailableRequests = function() {
-        return this._http2 || RequestScheduler.hasAvailableRequests() && (this.activeRequests < RequestScheduler.maximumRequestsPerServer);
+        return RequestScheduler.hasAvailableRequests() && (
+            this.activeRequests < (this._http2 ? RequestScheduler.maximumHTTP2RequestsPerServer : RequestScheduler.maximumRequestsPerServer)
+        );
     };
 
     RequestServer.prototype.getNumberOfAvailableRequests = function() {
-        return RequestScheduler.maximumRequestsPerServer - this.activeRequests;
+        return (this._http2 ? RequestScheduler.maximumHTTP2RequestsPerServer : RequestScheduler.maximumRequestsPerServer) - this.activeRequests;
     };
 
     var activeRequestsByServer = {};
@@ -228,7 +230,7 @@ define([
     };
 
     function requestComplete(request) {
-        --activeRequests;
+        if (!request.server._http2) --activeRequests;
         --request.server.activeRequests;
 
         // Start a deferred request immediately now that a slot is open
@@ -240,7 +242,7 @@ define([
 
     function startRequest(request) {
         var server = request.server;
-        ++activeRequests;
+        if (!server._http2) ++activeRequests;
         ++server.activeRequests;
 
         var parameters = request.parameters;
@@ -339,10 +341,6 @@ define([
             request.server = RequestScheduler.getRequestServer(request.url);
         }
 
-        if (request.server._http2) {
-            return startRequest(request);
-        }
-
         if (!request.server.hasAvailableRequests()) {
             if (!request.defer) {
                 // No available slots to make the request, return undefined
@@ -355,7 +353,7 @@ define([
             }
         }
 
-        if (RequestScheduler.prioritize && defined(request.type) && !request.defer) {
+        if (!request.server._http2 && RequestScheduler.prioritize && defined(request.type) && !request.defer) {
             var budget = getBudget(request);
             if (budget.used >= budget.total) {
                 // Request does not fit in the budget, return undefined
@@ -433,6 +431,8 @@ define([
      * @default 6
      */
     RequestScheduler.maximumRequestsPerServer = 6;
+
+    RequestScheduler.maximumHTTP2RequestsPerServer = 100;
 
     /**
      * Specifies the maximum number of requests that can be simultaneously open for all servers.  If this value is higher than
