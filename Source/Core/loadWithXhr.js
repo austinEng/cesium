@@ -145,10 +145,14 @@ define([
         }
 
         xhr.open(method, url, true);
-
+        var responseHeaders;
         if (defined(headers)) {
             for (var key in headers) {
                 if (headers.hasOwnProperty(key)) {
+                    if (key === 'responseHeaders') {
+                        responseHeaders = headers[key];
+                        continue;
+                    }
                     xhr.setRequestHeader(key, headers[key]);
                 }
             }
@@ -166,6 +170,14 @@ define([
 
             var response = xhr.response;
             var browserResponseType = xhr.responseType;
+
+            if (defined(responseHeaders)) {
+                for (var key in responseHeaders) {
+                    if (responseHeaders.hasOwnProperty(key)) {
+                        responseHeaders[key] = xhr.getResponseHeader(key);
+                    }
+                }
+            }
 
             //All modern browsers will go into either the first if block or last else block.
             //Other code paths support older browsers that either do not support the supplied responseType

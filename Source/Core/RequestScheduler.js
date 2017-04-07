@@ -57,10 +57,13 @@ define([
          * The name of the server.
          */
         this.serverName = serverName;
+
+        this._http2Checked = false;
+        this._http2 = false;
     }
 
     RequestServer.prototype.hasAvailableRequests = function() {
-        return RequestScheduler.hasAvailableRequests() && (this.activeRequests < RequestScheduler.maximumRequestsPerServer);
+        return this._http2 || RequestScheduler.hasAvailableRequests() && (this.activeRequests < RequestScheduler.maximumRequestsPerServer);
     };
 
     RequestServer.prototype.getNumberOfAvailableRequests = function() {
@@ -236,10 +239,31 @@ define([
     }
 
     function startRequest(request) {
+        var server = request.server;
         ++activeRequests;
-        ++request.server.activeRequests;
+        ++server.activeRequests;
 
-        return when(request.requestFunction(request.url, request.parameters), function(result) {
+        var parameters = request.parameters;
+        var responseHeaders;
+        if (!server._http2Checked) {
+            parameters = defaultValue(parameters, {
+                responseHeaders: {
+                    'X-Protocol': undefined
+                }
+            });
+            parameters.responseHeaders = defaultValue(parameters.responseHeaders, {});
+            responseHeaders = parameters.responseHeaders;
+            responseHeaders['X-Protocol'] = undefined;
+        }
+
+        return when(request.requestFunction(request.url, parameters), function(result) {
+            if (!server._http2Checked) {
+                server._http2Checked = true;
+                if (responseHeaders['X-Protocol'] === 'HTTP2') {
+                    server._http2 = true;
+                }
+            }
+
             requestComplete(request);
             return result;
         }).otherwise(function(error) {
@@ -313,6 +337,10 @@ define([
 
         if (!defined(request.server)) {
             request.server = RequestScheduler.getRequestServer(request.url);
+        }
+
+        if (request.server._http2) {
+            return startRequest(request);
         }
 
         if (!request.server.hasAvailableRequests()) {

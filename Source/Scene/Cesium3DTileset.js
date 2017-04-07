@@ -1003,7 +1003,6 @@ define([
      */
     Cesium3DTileset.prototype.loadTileset = function(tilesetUrl, parentTile) {
         var that = this;
-
         // We don't know the distance of the tileset until tiles.json is loaded, so use the default distance for now
         return RequestScheduler.request(tilesetUrl, loadJson, undefined, RequestType.TILES3D).then(function(tilesetJson) {
             if (that.isDestroyed()) {
