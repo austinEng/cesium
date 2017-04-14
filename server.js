@@ -6,6 +6,9 @@
     var compression = require('compression');
     var url = require('url');
     var request = require('request');
+    var http = require('http');
+    var http2 = require('spdy');
+    var fs = require('fs');
 
     var yargs = require('yargs').options({
         'port' : {
@@ -26,12 +29,49 @@
             'alias' : 'h',
             'type' : 'boolean',
             'description' : 'Show this help.'
+        },
+        'http' : {
+            'type': 'boolean',
+            'description': 'Start server using HTTP1'
+        },
+        'http2' : {
+            'type': 'boolean',
+            'description': 'Start server using HTTP2'
         }
     });
     var argv = yargs.argv;
 
     if (argv.help) {
         return yargs.showHelp();
+    }
+
+    function removeArg(args, arg) {
+        var index = args.indexOf(arg);
+        if (index !== -1) {
+            args = args.splice(index - 1, 1);
+        }
+        return args;
+    }
+
+    if ((!argv.http && !argv.http2) || (argv.http && argv.http2)) {
+        var child_process = require('child_process');
+        var args = process.argv.slice(2);
+        args = removeArg(args, '--port');
+        args = removeArg(args, '--http');
+        args = removeArg(args, '--http2');
+
+        var args1 = args.concat(['--http', '--port', argv.port]);
+        var child1 = child_process.fork(process.argv[1], args1);
+
+        var args2 = args.concat(['--http2', '--port', argv.port + 1]);
+        var child2 = child_process.fork(process.argv[1], args2);
+
+        process.on('SIGINT', function() {
+            child1.kill();
+            child2.kill();
+            process.exit(0);
+        });
+        return;
     }
 
     // eventually this mime type configuration will need to change
@@ -135,7 +175,12 @@
         });
     });
 
-    var server = app.listen(argv.port, argv.public ? undefined : 'localhost', function() {
+    var server = argv.http2 ? http2.createServer({
+        key: fs.readFileSync('./server.key'),
+        cert: fs.readFileSync('./server.crt'),
+    }, app) : http.createServer(app);
+
+    server.listen(argv.port, argv.public ? undefined : 'localhost', function() {
         if (argv.public) {
             console.log('Cesium development server running publicly.  Connect to http://localhost:%d/', server.address().port);
         } else {
