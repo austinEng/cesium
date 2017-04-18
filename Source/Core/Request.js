@@ -1,8 +1,12 @@
 /*global define*/
 define([
-        './defaultValue'
+        '../ThirdParty/when',
+        './defaultValue',
+        './defineProperties'
     ], function(
-        defaultValue) {
+        when,
+        defaultValue,
+        defineProperties) {
     'use strict';
 
     /**
@@ -62,7 +66,23 @@ define([
          * @private
          */
         this.server = options.server;
+
+        this.active = false;
+
+        this.xhr = undefined;
+
+        this.finished = when.defer();
+
+        this.canceled = false;
     }
+
+    defineProperties(Request.prototype, {
+        finishPromise : {
+            get : function() {
+                return this.finished.promise;
+            }
+        }
+    });
 
     return Request;
 });

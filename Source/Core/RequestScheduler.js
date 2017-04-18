@@ -333,19 +333,19 @@ define([
         }
     }
 
-    function startRequest(request) {
-        var server = request.server;
-        ++activeRequests;
-        ++server.activeRequests;
+    // function startRequest(request) {
+    //     var server = request.server;
+    //     ++activeRequests;
+    //     ++server.activeRequests;
 
-        return when(request.requestFunction(request.url, request.parameters, xhrHandler), function(result) {
-            requestComplete(request);
-            return result;
-        }).otherwise(function(error) {
-            requestComplete(request);
-            return when.reject(error);
-        });
-    }
+    //     return when(request.requestFunction(request.url, request.parameters, xhrHandler), function(result) {
+    //         requestComplete(request);
+    //         return result;
+    //     }).otherwise(function(error) {
+    //         requestComplete(request);
+    //         return when.reject(error);
+    //     });
+    // }
 
     function deferRequest(request) {
         deferredRequests.enqueue(request);
@@ -406,6 +406,20 @@ define([
 
         ++stats.numberOfRequestsThisFrame;
 
+        if (!defined(request.server)) {
+            request.server = RequestScheduler.getRequestServer(request.url);
+        }
+
+        requestHeap.insert(request);
+
+        makeRequests();
+
+        return request.finishPromise;
+
+        // var deferred = when.defer();
+
+        // return deferred.promise;
+
         if (!RequestScheduler.throttle) {
             return request.requestFunction(request.url, request.parameters);
         }
@@ -438,6 +452,91 @@ define([
 
         return startRequest(request);
     };
+
+    function makeRequests() {
+        var closest;
+        while (defined(closest = requestHeap.peek())) {
+            if (closest.canceled) {
+                requestHeap.pop();
+            } else {
+                break;
+            }
+        }
+        if (!defined(closest)) {
+            requestHeap.reserve();
+            return;
+        }
+
+        var closestDistance = closest.distance;
+
+        // pop the nearest requests and temporarily move them to the end of the internal array
+        var internalArray = requestHeap.data;
+        var internalArrayLength = internalArray.length;
+        var index = internalArrayLength - 1;
+        var top;
+        while (top = requestHeap.peek(), defined(top) && top.distance * 0.1 <= closestDistance) {
+            var request = requestHeap.pop();
+            if (!request.canceled) {
+                internalArray[index--] = request;
+            } else {
+                cancelRequest(request);
+            }
+        }
+
+        // cancel any ongoing requests that are no longer nearest
+        var i;
+        for (i = 0; i < requestHeap.length; ++i) {
+            cancelRequest(internalArray[i]);
+        }
+
+        // request nearest
+        for (i = internalArrayLength - 1; i > index; --i) {
+            var request = internalArray[i];
+            if (!request.active) {
+                startRequest(request);
+            }
+        }
+
+        // move requests back onto the heap
+        for (i = index + 1; i < internalArrayLength; ++i) {
+            requestHeap.insert(internalArray[i]);
+        }
+    }
+
+    function startRequest(request) {
+        request.active = true;
+        var server = request.server;
+        ++activeRequests;
+        ++server.activeRequests;
+
+        request.requestFunction(request.url, request.parameters, function(xhr) {
+            request.xhr = xhr;
+        }).then(function(result) {
+            request.finished.resolve(result);
+            finishRequest(request);
+        }).otherwise(function(error) {
+            console.log(error);
+            finishRequest(request);
+            request.finished.reject(error);
+        });
+    }
+
+    function finishRequest(request) {
+        var server = request.server;
+        request.active = false;
+        --activeRequests;
+        --server.activeRequests;
+        requestHeap.pop(requestHeap.data.indexOf(request));
+        makeRequests();
+    }
+
+    function cancelRequest(request) {
+        if (request.active && defined(request.xhr)) {
+            request.xhr.abort();
+            request.xhr = undefined;
+        }
+        request.active = false;
+    }
 
     /**
      * A function that will make a request when an open slot is available. Always returns

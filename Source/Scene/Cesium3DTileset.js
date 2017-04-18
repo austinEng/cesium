@@ -170,7 +170,7 @@ define([
         this._geometricError = undefined; // Geometric error when the tree is not rendered at all
         this._gltfUpAxis = undefined;
         this._processingQueue = [];
-        this._readyQueue = [];
+        this._processCompleteQueue = [];
         this._selectedTiles = [];
         this._selectedTilesToStyle = [];
         this._loadTimestamp = undefined;
@@ -1739,7 +1739,8 @@ define([
             var index = tileset._processingQueue.indexOf(tile);
             if (index >= 0) {
                 // // Remove from processing queue
-                tileset._readyQueue.push(tile);
+                // tileset._processCompleteQueue.push(tile);
+                tileset._processingQueue.splice(index, 1);
                 --tileset._statistics.numberProcessing;
                 if (tile.hasContent) {
                     // RESEARCH_IDEA: ability to unload tiles (without content) for an
@@ -1756,9 +1757,11 @@ define([
         };
     }
 
+    var canceledTiles = [];
+
     function processTiles(tileset, frameState) {
         var tiles = tileset._processingQueue;
-        var readyTiles = tileset._readyQueue;
+        var doneTiles = tileset._processCompleteQueue;
         var length = tiles.length;
 
         var start = Date.now();
@@ -1773,33 +1776,25 @@ define([
 
         // Process tiles in the PROCESSING state so they will eventually move to the READY state.
         for (i = 0; i < length; ++i) {
+
+            if (tiles.length !== length) { // a tile was removed when processing
+                i -= (length - tiles.length);
+                length = tiles.length;
+            }
+
             tile = tiles[i];
             // don't process tiles that are no longer visible
             if (!isVisible(tile.visibilityPlaneMask)) {
-                readyTiles.push(tile);
-                --tileset._statistics.numberProcessing;
-                tile.unloadContent();
-                continue;
+                removeFromProcessingQueue(tileset, tile)();
+            } else {
+                tile.process(tileset, frameState);
             }
-
-            tile.process(tileset, frameState);
 
             // stop processing after 10 ms
             if (Date.now() - start > 10) {
                 break;
             }
         }
-
-
-        length = readyTiles.length;
-        for (i = 0; i < length; ++i) {
-            tile = readyTiles[i];
-            var index = tiles.indexOf(tile);
-            if (index >= 0) {
-                tiles.splice(index, 1);
-            }
-        }
-        readyTiles.length = 0;
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -1941,11 +1936,13 @@ define([
         var lengthBeforeUpdate = commandList.length;
         for (i = 0; i < length; ++i) {
             tile = selectedTiles[i];
-            // Raise visible event before update in case the visible event
-            // makes changes that update needs to apply to WebGL resources
-            tileVisible.raiseEvent(tile);
-            tile.update(tileset, frameState);
-            incrementPointAndFeatureSelectionCounts(tileset, tile.content);
+            if (tile.contentReady) {
+                // Raise visible event before update in case the visible event
+                // makes changes that update needs to apply to WebGL resources
+                tileVisible.raiseEvent(tile);
+                tile.update(tileset, frameState);
+                incrementPointAndFeatureSelectionCounts(tileset, tile.content);
+            }
         }
         var lengthAfterUpdate = commandList.length;
 
