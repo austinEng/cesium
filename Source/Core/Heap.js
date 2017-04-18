@@ -210,5 +210,17 @@ define([
         return root;
     };
 
+    /**
+     * Get the top element from the heap and return it.
+     *
+     * @returns {*} The top element of the heap.
+     */
+    Heap.prototype.peek = function() {
+        if (this._length === 0) {
+            return undefined;
+        }
+        return this._data[0];
+    };
+
     return Heap;
 });

@@ -170,6 +170,7 @@ define([
         this._geometricError = undefined; // Geometric error when the tree is not rendered at all
         this._gltfUpAxis = undefined;
         this._processingQueue = [];
+        this._readyQueue = [];
         this._selectedTiles = [];
         this._selectedTilesToStyle = [];
         this._loadTimestamp = undefined;
@@ -1586,12 +1587,15 @@ define([
     function queueDescendants(tileset, start, frameState, selectionState, outOfCore) {
         var stack = scratchStack;
 
-        queueTile(tileset, start, start, frameState, selectionState, stack, outOfCore);
-
-        while (stack.length > 0) {
-            var tile = stack.pop();
-            visitTile(tileset, tile, frameState, outOfCore);
-            queueTile(tileset, start, tile, frameState, selectionState, stack, outOfCore);
+        if (start.contentReady) {
+            queueTile(tileset, start, start, frameState, selectionState, stack, outOfCore);
+            while (stack.length > 0) {
+                var tile = stack.pop();
+                visitTile(tileset, tile, frameState, outOfCore);
+                queueTile(tileset, start, tile, frameState, selectionState, stack, outOfCore);
+            }
+        } else {
+            selectionState.finalQueue.push(start);
         }
     }
 
@@ -1634,7 +1638,7 @@ define([
                     updateAndPushChildren(tileset, tile, frameState, stack, loadSiblings, outOfCore);
                     // at least one child was visible but not in request volume. Add the parent.
                     if (tile.childrenVisibility & Cesium3DTileChildrenVisibility.VISIBLE_NOT_IN_REQUEST_VOLUME) {
-                        loadAndAddToQueue(tileset, tile, finalQueue);
+                        loadAndAddToQueue(tileset, start, finalQueue);
                         if (tile.childrenVisibility & Cesium3DTileChildrenVisibility.VISIBLE) {
                             tileset._hasMixedContent = true;
                         }
@@ -1734,8 +1738,8 @@ define([
         return function() {
             var index = tileset._processingQueue.indexOf(tile);
             if (index >= 0) {
-                // Remove from processing queue
-                tileset._processingQueue.splice(index, 1);
+                // // Remove from processing queue
+                tileset._readyQueue.push(tile);
                 --tileset._statistics.numberProcessing;
                 if (tile.hasContent) {
                     // RESEARCH_IDEA: ability to unload tiles (without content) for an
@@ -1754,13 +1758,48 @@ define([
 
     function processTiles(tileset, frameState) {
         var tiles = tileset._processingQueue;
+        var readyTiles = tileset._readyQueue;
         var length = tiles.length;
 
-        // Process tiles in the PROCESSING state so they will eventually move to the READY state.
-        // Traverse backwards in case a tile is removed as a result of calling process()
-        for (var i = length - 1; i >= 0; --i) {
-            tiles[i].process(tileset, frameState);
+        var start = Date.now();
+
+        var i, tile;
+
+        // recompute visibility in case these are old tiles
+        for (i = 0; i < length; ++i) {
+            tile = tiles[i];
+            tile.visibilityPlaneMask = tile.visibility(frameState, CullingVolume.MASK_INDETERMINATE);
         }
+
+        // Process tiles in the PROCESSING state so they will eventually move to the READY state.
+        for (i = 0; i < length; ++i) {
+            tile = tiles[i];
+            // don't process tiles that are no longer visible
+            if (!isVisible(tile.visibilityPlaneMask)) {
+                readyTiles.push(tile);
+                --tileset._statistics.numberProcessing;
+                tile.unloadContent();
+                continue;
+            }
+
+            tile.process(tileset, frameState);
+
+            // stop processing after 10 ms
+            if (Date.now() - start > 10) {
+                break;
+            }
+        }
+
+
+        length = readyTiles.length;
+        for (i = 0; i < length; ++i) {
+            tile = readyTiles[i];
+            var index = tiles.indexOf(tile);
+            if (index >= 0) {
+                tiles.splice(index, 1);
+            }
+        }
+        readyTiles.length = 0;
     }
 
     ///////////////////////////////////////////////////////////////////////////

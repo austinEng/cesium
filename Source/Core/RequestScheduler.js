@@ -6,6 +6,7 @@ define([
         './defined',
         './defineProperties',
         './DeveloperError',
+        './Heap',
         './Queue',
         './Request',
         './RequestType'
@@ -16,6 +17,7 @@ define([
         defined,
         defineProperties,
         DeveloperError,
+        Heap,
         Queue,
         Request,
         RequestType) {
@@ -51,15 +53,77 @@ define([
         /**
          * Number of active requests at this server.
          */
-        this.activeRequests = 0;
+        this._activeRequests = 0;
 
         /**
          * The name of the server.
          */
         this.serverName = serverName;
+
+        this.bytesDownloaded = 0;
+        this.downloadingTime = 0;
+        this._downloadRate = undefined;
+        this._upperRate = 0;
+        this._lowerRate = 0;
+        this._nearest = undefined;
+        this._farthest = undefined;
+        this.maxRequests = RequestScheduler.maximumRequestsPerServer;
     }
 
+    defineProperties(RequestServer.prototype, {
+        activeRequests : {
+            get : function() {
+                return this._activeRequests;
+            },
+
+            set : function(value) {
+                this._activeRequests = value;
+                this.downloadRate = (this.bytesDownloaded / this.downloadingTime) / this._activeRequests;
+            }
+        },
+
+        // bytes per millisecond per request
+        downloadRate : {
+            get : function() {
+                return this._downloadRate;
+            },
+
+            set : function(rate) {
+
+                if (isNaN(rate)) {
+                    return;
+                }
+
+                if (!defined(this._downloadRate)) {
+                    this._downloadRate = rate;
+                    this._upperRate = rate;
+                    this._lowerRate = rate;
+                } else {
+                    var a = 0.1;
+
+                    if (rate < this._downloadRate) {
+                        this._lowerRate = a * rate + (1 - a) * this._lowerRate;
+                    } else if (rate > this._downloadRate) {
+                        this._upperRate = a * rate + (1 - a) * this._upperRate;
+                    }
+
+                    this._downloadRate = a * rate + (1 - a) * this._downloadRate;
+
+                    // console.log(this._upperRate / this._lowerRate);
+                }
+            }
+        }
+    })
+
     RequestServer.prototype.hasAvailableRequests = function() {
+        // return true;
+        // if there is a large disparity between download rates, we likely saturated the # requests
+
+        // return this.activeRequests < this.maxRequests;
+
+        // return (this._upperRate / this._lowerRate < 5) ||
+        //        (this.activeRequests < RequestScheduler.maximumRequestsPerServer);
+
         return RequestScheduler.hasAvailableRequests() && (this.activeRequests < RequestScheduler.maximumRequestsPerServer);
     };
 
@@ -72,6 +136,9 @@ define([
     var budgets = [];
     var leftoverRequests = [];
     var deferredRequests = new Queue();
+
+    var requestHeap = new Heap(distanceSortFunction);
+    var defferedHeap = new Heap(distanceSortFunction);
 
     var stats = {
         numberOfRequestsThisFrame : 0
@@ -221,12 +288,13 @@ define([
      * @returns {Boolean} Returns true if there are available slots, otherwise false.
      */
     RequestScheduler.hasAvailableRequests = function() {
-        return activeRequests < RequestScheduler.maximumRequests;
+        return !RequestScheduler.throttle || activeRequests < RequestScheduler.maximumRequests;
     };
 
     function requestComplete(request) {
+        var server = request.server;
         --activeRequests;
-        --request.server.activeRequests;
+        --server.activeRequests;
 
         // Start a deferred request immediately now that a slot is open
         var deferredRequest = deferredRequests.dequeue();
@@ -235,11 +303,42 @@ define([
         }
     }
 
-    function startRequest(request) {
-        ++activeRequests;
-        ++request.server.activeRequests;
+    function xhrHandler(xhr, url) {
+        if (defined(xhr)) {
+            var initializedTime = Date.now();
+            var server = RequestScheduler.getRequestServer(url);
 
-        return when(request.requestFunction(request.url, request.parameters), function(result) {
+            var loaded = 0;
+            var elapsed = 0;
+
+            xhr.onprogress = function(event) {
+                server.downloadingTime -= elapsed;
+                elapsed = Date.now() - initializedTime;
+                server.downloadingTime += elapsed;
+
+                var bytes = event.loaded - loaded;
+                loaded = event.loaded;
+                server.bytesDownloaded += bytes;
+
+                server.downloadRate = (server.bytesDownloaded / server.downloadingTime) / server.activeRequests;
+            }
+
+            xhr.onreadystatechange = function() {
+                if(xhr.readyState === XMLHttpRequest.DONE) {
+                    server.bytesDownloaded -= loaded;
+                    server.downloadingTime -= elapsed;
+                    server.downloadRate = (server.bytesDownloaded / server.downloadingTime) / server.activeRequests;
+                }
+            }
+        }
+    }
+
+    function startRequest(request) {
+        var server = request.server;
+        ++activeRequests;
+        ++server.activeRequests;
+
+        return when(request.requestFunction(request.url, request.parameters, xhrHandler), function(result) {
             requestComplete(request);
             return result;
         }).otherwise(function(error) {
@@ -327,15 +426,15 @@ define([
             }
         }
 
-        if (RequestScheduler.prioritize && defined(request.type) && !request.defer) {
-            var budget = getBudget(request);
-            if (budget.used >= budget.total) {
-                // Request does not fit in the budget, return undefined
-                handleLeftoverRequest(request);
-                return undefined;
-            }
-            ++budget.used;
-        }
+        // if (RequestScheduler.prioritize && defined(request.type) && !request.defer) {
+        //     var budget = getBudget(request);
+        //     if (budget.used >= budget.total) {
+        //         // Request does not fit in the budget, return undefined
+        //         handleLeftoverRequest(request);
+        //         return undefined;
+        //     }
+        //     ++budget.used;
+        // }
 
         return startRequest(request);
     };
@@ -404,7 +503,7 @@ define([
      * @type {Number}
      * @default 6
      */
-    RequestScheduler.maximumRequestsPerServer = 6;
+    RequestScheduler.maximumRequestsPerServer = 10000;//6;
 
     /**
      * Specifies the maximum number of requests that can be simultaneously open for all servers.  If this value is higher than
@@ -413,7 +512,7 @@ define([
      * @type {Number}
      * @default 10
      */
-    RequestScheduler.maximumRequests = 10;
+    RequestScheduler.maximumRequests = 10000;//10;
 
     /**
      * Specifies if the request scheduler should prioritize incoming requests
