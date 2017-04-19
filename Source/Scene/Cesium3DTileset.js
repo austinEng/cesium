@@ -1763,6 +1763,7 @@ define([
         var i, tile;
 
         var start = Date.now();
+        var timeSlice = 20;
 
         // recompute visibility in case these are old tiles
         for (i = 0; i < length; ++i) {
@@ -1770,23 +1771,27 @@ define([
             tile.visibilityPlaneMask = tile.visibility(frameState, CullingVolume.MASK_INDETERMINATE);
         }
 
+        var internalLength = tiles.data.length;
+        var popCount = 0;
+
         var noneVisible = false;
          // Process tiles in the PROCESSING state so they will eventually move to the READY state.
-        while (Date.now() - start <= 5) {
+        while (Date.now() - start <= timeSlice) {
             var anyVisible = false;
 
-            var internalLength = tiles.data.length;
-            var index = internalLength - 1;
-
-            for (i = 0; i < length && Date.now() - start <= 5; ++i) {
+            for (i = 0; i < length && Date.now() - start <= timeSlice; ++i) {
                 if (tiles.length !== length) { // a tile was removed when processing
                     i -= (length - tiles.length);
                     length = tiles.length;
                 }
 
-                // tile = tiles[i];
-                tile = tiles.pop();
-                tiles.data[index--] = tile;
+                if (i < popCount) {
+                    tile = tiles.data[internalLength - popCount];
+                } else {
+                    ++popCount;
+                    tile = tiles.pop();
+                    tiles.data[internalLength - popCount] = tile;
+                }
 
                 // process visible tiles first
                 if (isVisible(tile.visibilityPlaneMask)) {
@@ -1798,12 +1803,14 @@ define([
                 }
             }
 
-            for (i = index + 1; i < internalLength; ++i) {
-                tiles.insert(tiles.data[i]);
-            }
-
             noneVisible = !anyVisible;
         }
+
+        for (i = internalLength - popCount; i < internalLength; ++i) {
+            tiles.insert(tiles.data[i]);
+        }
+
+        tiles.reserve();
     }
 
     ///////////////////////////////////////////////////////////////////////////
