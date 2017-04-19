@@ -422,6 +422,21 @@ define([
         },
 
         /**
+         * Determines if the tile is processing. <code>true</code> if the tile
+         * is processing; otherwise, <code>false</code>.
+         *
+         * @memberof Cesium3DTile.prototype
+         *
+         * @type {Boolean}
+         * @readonly
+         */
+        contentProcessing : {
+            get : function() {
+                return this._contentState === Cesium3DTileContentState.PROCESSING;
+            }
+        },
+
+        /**
          * Determines if the tile is ready to render. <code>true</code> if the tile
          * is ready to render; otherwise, <code>false</code>.
          *
@@ -594,13 +609,20 @@ define([
     /**
      * Cancels the request for a tile's content.
      *
+     * @returns {Boolean} <code>true</code> when the content request was canceled; otherwise, <code>false</false>.
      * @private
      */
     Cesium3DTile.prototype.cancelRequestContent = function() {
         if (defined(this._request)) {
             this._request.canceled = true;
             this._request = undefined;
+            this._contentState = Cesium3DTileContentState.UNLOADED;
+            this._contentReadyToProcessPromise = undefined;
+            this._contentReadyPromise = undefined;
+
+            return true;
         }
+        return false;
     };
 
     /**

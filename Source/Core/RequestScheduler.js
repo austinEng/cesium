@@ -412,7 +412,7 @@ define([
 
         requestHeap.insert(request);
 
-        makeRequests();
+        // makeRequests();
 
         return request.finishPromise;
 
@@ -453,40 +453,44 @@ define([
         return startRequest(request);
     };
 
-    function makeRequests() {
-        var closest;
-        while (defined(closest = requestHeap.peek())) {
-            if (closest.canceled) {
-                requestHeap.pop();
-            } else {
-                break;
+    RequestScheduler.makeRequests = function() {
+        var internalArray = requestHeap.data;
+        var length = requestHeap.length;
+
+        var i, request;
+
+        for (var i = 0; i < length; ++i) {
+            var request = internalArray[i];
+            if (request.canceled) {
+                stopRequest(request);
+                if (removeRequest(request, i)) {
+                    --i;
+                }
             }
         }
+
+        var closest = requestHeap.peek();
+
         if (!defined(closest)) {
-            requestHeap.reserve();
             return;
         }
 
         var closestDistance = closest.distance;
 
         // pop the nearest requests and temporarily move them to the end of the internal array
-        var internalArray = requestHeap.data;
         var internalArrayLength = internalArray.length;
         var index = internalArrayLength - 1;
         var top;
-        while (top = requestHeap.peek(), defined(top) && top.distance *0.8 <= closestDistance) {
-            var request = requestHeap.pop();
-            if (!request.canceled) {
-                internalArray[index--] = request;
-            } else {
-                cancelRequest(request);
-            }
+        while (top = requestHeap.peek(), defined(top) && top.distance * 0.5 <= closestDistance) {
+            internalArray[index--] = requestHeap.pop();
         }
 
-        // cancel any ongoing requests that are no longer nearest
+        length = requestHeap.length;
+
+        // stop any ongoing requests that are no longer nearest
         var i;
-        for (i = 0; i < requestHeap.length; ++i) {
-            cancelRequest(internalArray[i]);
+        for (i = 0; i < length; ++i) {
+            stopRequest(internalArray[i]);
         }
 
         // request nearest
@@ -501,7 +505,9 @@ define([
         for (i = index + 1; i < internalArrayLength; ++i) {
             requestHeap.insert(internalArray[i]);
         }
-    }
+
+        requestHeap.reserve();
+    };
 
     function startRequest(request) {
         request.active = true;
@@ -513,29 +519,34 @@ define([
             request.xhr = xhr;
         }).then(function(result) {
             request.finished.resolve(result);
-            finishRequest(request);
+            removeRequest(request);
         }).otherwise(function(error) {
             console.log(error);
-            finishRequest(request);
+            removeRequest(request);
             request.finished.reject(error);
         });
     }
 
-    function finishRequest(request) {
-        var server = request.server;
-        request.active = false;
-        --activeRequests;
-        --server.activeRequests;
-        requestHeap.pop(requestHeap.data.indexOf(request));
-        makeRequests();
+    function removeRequest(request, index) {
+        index = defaultValue(index, requestHeap.data.indexOf(request));
+        if (index >= 0 && index < requestHeap.length) {
+            requestHeap.pop(index);
+            return true;
+        }
+        return false;
     }
 
-    function cancelRequest(request) {
-        if (request.active && defined(request.xhr)) {
+    function stopRequest(request) {
+        if (request.active) {
+            var server = request.server;
+            request.active = false;
+            --activeRequests;
+            --server.activeRequests;
+        }
+        if (defined(request.xhr)) {
             request.xhr.abort();
             request.xhr = undefined;
         }
-        request.active = false;
     }
 
     /**

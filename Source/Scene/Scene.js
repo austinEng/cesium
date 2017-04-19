@@ -2647,6 +2647,7 @@ define([
 
         context.endFrame();
         callAfterRenderFunctions(frameState);
+        RequestScheduler.makeRequests();
 
         scene._postRender.raiseEvent(scene, time);
     }

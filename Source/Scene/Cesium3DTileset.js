@@ -171,7 +171,7 @@ define([
         this._gltfUpAxis = undefined;
         this._processingQueue = [];
         this._processingHeap = new Heap(sortForLoad);
-        this._processCompleteQueue = [];
+        this._requestingTiles = [];
         this._selectedTiles = [];
         this._selectedTilesLastFrame = [];
         this._selectedTilesToStyle = [];
@@ -1247,6 +1247,8 @@ define([
             return;
         }
 
+        tileset._requestingTiles.push(tile);
+
         ++stats.numberOfPendingRequests;
 
         var removeFunction = removeFromProcessingQueue(tileset, tile);
@@ -1722,6 +1724,11 @@ define([
 
     function addToProcessingQueue(tileset, tile) {
         return function() {
+            var index = tileset._requestingTiles.indexOf(tile);
+            if (index >= 0) {
+                tileset._requestingTiles.splice(index, 1);
+            }
+
             // tileset._processingQueue.push(tile);
             tileset._processingHeap.insert(tile);
 
@@ -1738,7 +1745,11 @@ define([
                 // // Remove from processing queue
                 // tileset._processCompleteQueue.push(tile);
                 // tileset._processingQueue.splice(index, 1);
-                tileset._processingHeap.pop(index);
+
+                if (index < tileset._processingHeap.length) {
+                    tileset._processingHeap.pop(index);
+                }
+
                 --tileset._statistics.numberProcessing;
                 if (tile.hasRenderableContent) {
                     // RESEARCH_IDEA: ability to unload tiles (without content) for an
@@ -1753,6 +1764,26 @@ define([
                 --tileset._statistics.numberOfPendingRequests;
             }
         };
+    }
+
+    function cancelTileRequests(tileset, frameState) {
+        var tiles = tileset._requestingTiles;
+        var length = tiles.length;
+
+        var i, tile;
+
+        for (i = 0; i < length; ++i) {
+            tile = tiles[i];
+            if (defined(tile._request)) {
+                tile.visibilityPlaneMask = tile.visibility(frameState, CullingVolume.MASK_INDETERMINATE);
+                if (!isVisible(tile.visibilityPlaneMask) && tile.cancelRequestContent()) {
+                    --tileset._statistics.numberOfPendingRequests;
+                    tiles.splice(i--, 1);
+                    length -= 1;
+                }
+            }
+
+        }
     }
 
     function processTiles(tileset, frameState) {
@@ -1774,40 +1805,45 @@ define([
         var internalLength = tiles.data.length;
         var popCount = 0;
 
-        var noneVisible = false;
-         // Process tiles in the PROCESSING state so they will eventually move to the READY state.
-        while (Date.now() - start <= timeSlice) {
-            var anyVisible = false;
-
-            for (i = 0; i < length && Date.now() - start <= timeSlice; ++i) {
-                if (tiles.length !== length) { // a tile was removed when processing
-                    i -= (length - tiles.length);
-                    length = tiles.length;
-                }
-
-                if (i < popCount) {
-                    tile = tiles.data[internalLength - popCount];
-                } else {
-                    ++popCount;
-                    tile = tiles.pop();
-                    tiles.data[internalLength - popCount] = tile;
-                }
-
-                // process visible tiles first
-                if (isVisible(tile.visibilityPlaneMask)) {
-                    tile.process(tileset, frameState);
-                    anyVisible = true;
-                } else if (noneVisible) {
-                    // if there's still time after processing visible tiles, process the rest
-                    tile.process(tileset, frameState);
-                }
+        for (i = 0; i < length && Date.now() - start <= timeSlice; ++i) {
+            if (tiles.length !== length) { // a tile was removed when processing
+                i -= (length - tiles.length);
+                length = tiles.length;
             }
 
-            noneVisible = !anyVisible;
+            if (i < popCount) {
+                tile = tiles.data[internalLength - i - 1];
+            } else {
+                ++popCount;
+                tile = tiles.pop();
+                tiles.data[internalLength - popCount] = tile;
+            }
+
+            // process visible tiles first
+            if (isVisible(tile.visibilityPlaneMask)) {
+                tile.process(tileset, frameState);
+            }
+        }
+
+        length = tiles.length;
+        for (i = 0; i < length && Date.now() - start <= timeSlice; ++i) {
+            if (tiles.length !== length) { // a tile was removed when processing
+                i -= (length - tiles.length);
+                length = tiles.length;
+            }
+
+            tile = tiles.data[internalLength - i - 1];
+
+            if (!isVisible(tile.visibilityPlaneMask)) {
+                tile.process(tileset, frameState);
+            }
         }
 
         for (i = internalLength - popCount; i < internalLength; ++i) {
-            tiles.insert(tiles.data[i]);
+            var tile = tiles.data[i];
+            if (tile.contentProcessing) {
+                tiles.insert(tile);
+            }
         }
 
         tiles.reserve();
@@ -2121,6 +2157,7 @@ define([
         clearStats(this);
 
         if (outOfCore) {
+            cancelTileRequests(this, frameState);
             processTiles(this, frameState);
         }
 
