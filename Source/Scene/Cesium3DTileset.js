@@ -170,6 +170,7 @@ define([
         this._geometricError = undefined; // Geometric error when the tree is not rendered at all
         this._gltfUpAxis = undefined;
         this._processingQueue = [];
+        this._processingHeap = new Heap(sortForLoad);
         this._processCompleteQueue = [];
         this._selectedTiles = [];
         this._selectedTilesLastFrame = [];
@@ -1721,7 +1722,8 @@ define([
 
     function addToProcessingQueue(tileset, tile) {
         return function() {
-            tileset._processingQueue.push(tile);
+            // tileset._processingQueue.push(tile);
+            tileset._processingHeap.insert(tile);
 
             --tileset._statistics.numberOfPendingRequests;
             ++tileset._statistics.numberProcessing;
@@ -1730,11 +1732,13 @@ define([
 
     function removeFromProcessingQueue(tileset, tile) {
         return function() {
-            var index = tileset._processingQueue.indexOf(tile);
+            // var index = tileset._processingQueue.indexOf(tile);
+            var index = tileset._processingHeap.data.indexOf(tile);
             if (index >= 0) {
                 // // Remove from processing queue
                 // tileset._processCompleteQueue.push(tile);
-                tileset._processingQueue.splice(index, 1);
+                // tileset._processingQueue.splice(index, 1);
+                tileset._processingHeap.pop(index);
                 --tileset._statistics.numberProcessing;
                 if (tile.hasRenderableContent) {
                     // RESEARCH_IDEA: ability to unload tiles (without content) for an
@@ -1752,8 +1756,8 @@ define([
     }
 
     function processTiles(tileset, frameState) {
-        var tiles = tileset._processingQueue;
-        var doneTiles = tileset._processCompleteQueue;
+        // var tiles = tileset._processingQueue;
+        var tiles = tileset._processingHeap;
         var length = tiles.length;
 
         var i, tile;
@@ -1762,7 +1766,7 @@ define([
 
         // recompute visibility in case these are old tiles
         for (i = 0; i < length; ++i) {
-            tile = tiles[i];
+            tile = tiles.data[i];
             tile.visibilityPlaneMask = tile.visibility(frameState, CullingVolume.MASK_INDETERMINATE);
         }
 
@@ -1771,13 +1775,19 @@ define([
         while (Date.now() - start <= 5) {
             var anyVisible = false;
 
+            var internalLength = tiles.data.length;
+            var index = internalLength - 1;
+
             for (i = 0; i < length && Date.now() - start <= 5; ++i) {
                 if (tiles.length !== length) { // a tile was removed when processing
                     i -= (length - tiles.length);
                     length = tiles.length;
                 }
 
-                tile = tiles[i];
+                // tile = tiles[i];
+                tile = tiles.pop();
+                tiles.data[index--] = tile;
+
                 // process visible tiles first
                 if (isVisible(tile.visibilityPlaneMask)) {
                     tile.process(tileset, frameState);
@@ -1787,6 +1797,11 @@ define([
                     tile.process(tileset, frameState);
                 }
             }
+
+            for (i = index + 1; i < internalLength; ++i) {
+                tiles.insert(tiles.data[i]);
+            }
+
             noneVisible = !anyVisible;
         }
     }
