@@ -347,6 +347,8 @@ define([
         this._selectionDepth = 0;
         this._lastFinalResolution = undefined;
         this._lastSelectionDepth = undefined;
+
+        this._request = undefined;
     }
 
     defineProperties(Cesium3DTile.prototype, {
@@ -510,13 +512,20 @@ define([
         }
 
         var distance = this.distanceToCamera;
-        var promise = RequestScheduler.schedule(new Request({
+        var request = new Request({
             url : this._contentUrl,
             server : this._requestServer,
             requestFunction : loadArrayBuffer,
             type : RequestType.TILES3D,
             distance : distance
-        }));
+        });
+
+        if (defined(this._request)) {
+            this._request.canceled = true;
+        }
+        this._request = request;
+
+        var promise = RequestScheduler.schedule(request);
 
         if (!defined(promise)) {
             return false;
@@ -530,6 +539,8 @@ define([
             if (that.isDestroyed()) {
                 return when.reject('tileset is destroyed');
             }
+            that._request = undefined;
+
             var uint8Array = new Uint8Array(arrayBuffer);
             var magic = getMagic(uint8Array);
             var contentFactory = Cesium3DTileContentFactory[magic];
@@ -578,6 +589,18 @@ define([
             return true;
         }
         return this._requestServer.hasAvailableRequests();
+    };
+
+    /**
+     * Cancels the request for a tile's content.
+     *
+     * @private
+     */
+    Cesium3DTile.prototype.cancelRequestContent = function() {
+        if (defined(this._request)) {
+            this._request.canceled = true;
+            this._request = undefined;
+        }
     };
 
     /**

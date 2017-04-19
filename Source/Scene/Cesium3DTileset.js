@@ -1751,28 +1751,14 @@ define([
         };
     }
 
-    var canceledTiles = [];
-
-    function cancelTileRequests(tileset, frameState) {
-        var tiles = tileset._selectedTilesLastFrame;
-        var length = tiles.length;
-
-        for (var i = 0; i < length; ++i) {
-            var tile = tiles[i];
-            if (tile.lastSelectedFrameNumber !== frameState.frameNumber) {
-
-            }
-        }
-    }
-
     function processTiles(tileset, frameState) {
         var tiles = tileset._processingQueue;
         var doneTiles = tileset._processCompleteQueue;
         var length = tiles.length;
 
-        var start = Date.now();
-
         var i, tile;
+
+        var start = Date.now();
 
         // recompute visibility in case these are old tiles
         for (i = 0; i < length; ++i) {
@@ -1780,26 +1766,28 @@ define([
             tile.visibilityPlaneMask = tile.visibility(frameState, CullingVolume.MASK_INDETERMINATE);
         }
 
-        // Process tiles in the PROCESSING state so they will eventually move to the READY state.
-        for (i = 0; i < length; ++i) {
+        var noneVisible = false;
+         // Process tiles in the PROCESSING state so they will eventually move to the READY state.
+        while (Date.now() - start <= 5) {
+            var anyVisible = false;
 
-            if (tiles.length !== length) { // a tile was removed when processing
-                i -= (length - tiles.length);
-                length = tiles.length;
-            }
+            for (i = 0; i < length && Date.now() - start <= 5; ++i) {
+                if (tiles.length !== length) { // a tile was removed when processing
+                    i -= (length - tiles.length);
+                    length = tiles.length;
+                }
 
-            tile = tiles[i];
-            // don't process tiles that are no longer visible
-            if (!isVisible(tile.visibilityPlaneMask)) {
-                removeFromProcessingQueue(tileset, tile)();
-            } else {
-                tile.process(tileset, frameState);
+                tile = tiles[i];
+                // process visible tiles first
+                if (isVisible(tile.visibilityPlaneMask)) {
+                    tile.process(tileset, frameState);
+                    anyVisible = true;
+                } else if (noneVisible) {
+                    // if there's still time after processing visible tiles, process the rest
+                    tile.process(tileset, frameState);
+                }
             }
-
-            // stop processing after 5 ms
-            if (Date.now() - start > 5) {
-                break;
-            }
+            noneVisible = !anyVisible;
         }
     }
 
@@ -2111,7 +2099,6 @@ define([
         clearStats(this);
 
         if (outOfCore) {
-            cancelTileRequests(this, frameState);
             processTiles(this, frameState);
         }
 
