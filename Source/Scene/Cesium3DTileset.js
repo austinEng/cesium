@@ -172,6 +172,7 @@ define([
         this._processingQueue = [];
         this._processCompleteQueue = [];
         this._selectedTiles = [];
+        this._selectedTilesLastFrame = [];
         this._selectedTilesToStyle = [];
         this._loadTimestamp = undefined;
         this._timeSinceLoad = 0.0;
@@ -1419,6 +1420,9 @@ define([
 
         var maximumScreenSpaceError = tileset._maximumScreenSpaceError;
 
+        var temp = tileset._selectedTiles;
+        tileset._selectedTiles = tileset._selectedTilesLastFrame;
+        tileset._selectedTilesLastFrame = temp;
         tileset._selectedTiles.length = 0;
         tileset._selectedTilesToStyle.length = 0;
         tileset._hasMixedContent = false;
@@ -1759,6 +1763,18 @@ define([
 
     var canceledTiles = [];
 
+    function cancelTileRequests(tileset, frameState) {
+        var tiles = tileset._selectedTilesLastFrame;
+        var length = tiles.length;
+
+        for (var i = 0; i < length; ++i) {
+            var tile = tiles[i];
+            if (tile.lastSelectedFrameNumber !== frameState.frameNumber) {
+
+            }
+        }
+    }
+
     function processTiles(tileset, frameState) {
         var tiles = tileset._processingQueue;
         var doneTiles = tileset._processCompleteQueue;
@@ -1790,8 +1806,8 @@ define([
                 tile.process(tileset, frameState);
             }
 
-            // stop processing after 10 ms
-            if (Date.now() - start > 10) {
+            // stop processing after 5 ms
+            if (Date.now() - start > 5) {
                 break;
             }
         }
@@ -2105,6 +2121,7 @@ define([
         clearStats(this);
 
         if (outOfCore) {
+            cancelTileRequests(this, frameState);
             processTiles(this, frameState);
         }
 

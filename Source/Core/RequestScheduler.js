@@ -474,7 +474,7 @@ define([
         var internalArrayLength = internalArray.length;
         var index = internalArrayLength - 1;
         var top;
-        while (top = requestHeap.peek(), defined(top) && top.distance * 0.1 <= closestDistance) {
+        while (top = requestHeap.peek(), defined(top) && top.distance *0.8 <= closestDistance) {
             var request = requestHeap.pop();
             if (!request.canceled) {
                 internalArray[index--] = request;
