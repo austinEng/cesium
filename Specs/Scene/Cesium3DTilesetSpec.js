@@ -2248,10 +2248,30 @@ defineSuite([
 
             expect(tileset._root.visibility(scene.frameState, CullingVolume.MASK_INDETERMINATE)).not.toEqual(CullingVolume.MASK_OUTSIDE);
             expect(spyUpdate.calls.count()).toEqual(4);
-            expect(spyUpdate.calls.argsFor(0)[0]).toBe(tileset._root.children[0]);
-            expect(spyUpdate.calls.argsFor(1)[0]).toBe(tileset._root.children[1]);
-            expect(spyUpdate.calls.argsFor(2)[0]).toBe(tileset._root.children[2]);
-            expect(spyUpdate.calls.argsFor(3)[0]).toBe(tileset._root.children[3]);
+
+            var unloadedTiles = [
+                spyUpdate.calls.argsFor(0)[0],
+                spyUpdate.calls.argsFor(1)[0],
+                spyUpdate.calls.argsFor(2)[0],
+                spyUpdate.calls.argsFor(3)[0]
+            ];
+
+            var expectedUnloadedTiles = [
+                tileset._root.children[0],
+                tileset._root.children[1],
+                tileset._root.children[2],
+                tileset._root.children[3]
+            ];
+
+            var length = unloadedTiles.length;
+            for (var i = 0; i < length; ++i) {
+                var tile = unloadedTiles[i];
+                var index = expectedUnloadedTiles.indexOf(tile);
+                expect(index).not.toEqual(-1);
+                expectedUnloadedTiles.splice(index, 1);
+            }
+
+            expect(expectedUnloadedTiles.length).toEqual(0);
         });
     });
 

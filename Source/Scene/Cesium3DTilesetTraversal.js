@@ -133,7 +133,7 @@ define([
                     var childrenLength = children.length;
                     for (var j = 0; j < childrenLength; ++j) {
                         var child = children[j];
-                        touch(tileset, child, outOfCore);
+                        touch(tileset, child, frameState, outOfCore);
                         if (child.contentReady) {
                             child.selected = true;
                             child._finalResolution = true;
@@ -312,7 +312,7 @@ define([
             for (var i = 0; i < childrenLength; ++i) {
                 var child = children[i];
                 loadTile(child, this.frameState);
-                touch(this.tileset, child, this.outOfCore);
+                touch(this.tileset, child, this.frameState, this.outOfCore);
 
                 // content cannot be replaced until all of the nearest descendants with content are all loaded
                 if (replacementWithContent) {
@@ -400,7 +400,7 @@ define([
             for (var i = 0; i < childrenLength; ++i) {
                 var child = children[i];
                 loadTile(child, this.frameState);
-                touch(this.tileset, child, this.outOfCore);
+                touch(this.tileset, child, this.frameState, this.outOfCore);
                 if (!tile.contentReady) {
                     this.allLoaded = false;
                 }
@@ -523,7 +523,7 @@ define([
             var children = tile.children;
             var childrenLength = children.length;
             for (var i = 0; i < childrenLength; ++i) {
-                touch(tileset, children[i], this.outOfCore);
+                touch(tileset, children[i], this.frameState, this.outOfCore);
             }
             return children;
         } else {
@@ -555,11 +555,11 @@ define([
                     var length = tiles.length;
                     for (var i = 0; i < length; ++i) {
                         loadTile(tiles[i], this.frameState);
-                        touch(this.tileset, tiles[i], this.outOfCore);
+                        touch(this.tileset, tiles[i], this.frameState, this.outOfCore);
                     }
                 } else {
                     loadTile(tile, this.frameState);
-                    touch(this.tileset, tile, this.outOfCore);
+                    touch(this.tileset, tile, this.frameState, this.outOfCore);
                 }
             }
             this.queue.push(tile);
@@ -592,7 +592,7 @@ define([
         tile.selected = false;
         tile._finalResolution = false;
         computeSSE(tile, frameState);
-        touch(tileset, tile, outOfCore);
+        touch(tileset, tile, frameState, outOfCore);
         tile._ancestorWithContent = undefined;
         tile._ancestorWithLoadedContent = undefined;
         var parent = tile.parent;
@@ -603,12 +603,13 @@ define([
         }
     }
 
-    function touch(tileset, tile, outOfCore) {
-        if (!outOfCore) {
+    function touch(tileset, tile, frameState, outOfCore) {
+        if (!outOfCore || tile._touchedFrame === frameState.frameNumber) {
             return;
         }
         var node = tile.replacementNode;
         if (defined(node)) {
+            tile._touchedFrame = frameState.frameNumber;
             tileset._replacementList.splice(tileset._replacementSentinel, node);
         }
     }
